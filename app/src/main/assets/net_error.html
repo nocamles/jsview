@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 针对移动端进行视口优化，禁止缩放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>网络连接失败</title>
+    <style>
+        /* 基础重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* 禁止长按选中文本和高亮 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #F7F8FA; /* 柔和的浅灰色背景 */
+            font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 0 32px;
+            animation: fadeIn 0.5s ease-out; /* 简单的渐显动画 */
+        }
+
+        /* 动画定义 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .icon-wrapper {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* SVG 图标样式 */
+        .error-icon {
+            width: 120px;
+            height: 120px;
+            color: #C8D0D8;
+        }
+
+        h1 {
+            font-size: 20px;
+            color: #333333;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        p {
+            font-size: 14px;
+            color: #888888;
+            line-height: 1.5;
+            margin-bottom: 40px;
+        }
+
+        /* 按钮样式 */
+        .retry-btn {
+            background: linear-gradient(135deg, #4A90E2 0%, #007AFF 100%);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 25px;
+            padding: 14px 0;
+            width: 200px;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        /* 移动端按钮按下效果 */
+        .retry-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
+            background: linear-gradient(135deg, #3A7BC2 0%, #0062CC 100%);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="error-container">
+        <!-- 无网络连接的矢量SVG图标 -->
+        <div class="icon-wrapper">
+            <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+        </div>
+        
+        <h1>网络连接似乎断开了</h1>
+        <p>请检查您的网络设置，或点击下方按钮重试</p>
+        
+        <button class="retry-btn" id="retryBtn" onclick="onRetryClick()">点击重试</button>
+    </div>
+
+    <script>
+        function onRetryClick() {
+            // 按钮点击时的视觉反馈（将文字短暂变为"加载中..."）
+            const btn = document.getElementById('retryBtn');
+            const originalText = btn.innerText;
+            btn.innerText = '正在重试...';
+            btn.style.opacity = '0.8';
+            
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.opacity = '1';
+            }, 1000); // 1秒后恢复文字，以防App没立刻刷新掉当前页面
+
+            // 构造您要求的 JSON 参数
+            const request = {
+                methods: 'refreshPage',
+                callback: `refresh_callback`,
+                paramObj: null
+            };
+
+            // 调用 Android 原生方法
+            try {
+                if (window.android && window.android.JSToNative) {
+                    window.android.JSToNative(JSON.stringify(request));
+                } else {
+                    // 如果在浏览器环境测试时，给出提示，方便调试
+                    console.warn('当前非Android原生环境，桥接调用信息:', JSON.stringify(request));
+                }
+            } catch (error) {
+                console.error('调用原生方法失败:', error);
+            }
+        }
+    </script>
+
+</body>
+</html>
