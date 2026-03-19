@@ -75,12 +75,24 @@
         <button onclick="callNative('saveImage', document.getElementById('testImage').src)">通过 JS 保存网络图片</button>
     </div>
 
+    <div class="section">
+        <h3>4. Deep Link 跳转测试</h3>
+        <p>点击下方按钮，测试触发 <code>jsview://</code> 协议。系统会拦截该请求并尝试匹配 AndroidManifest 中的 Intent Filter。</p>
+        <button class="success" onclick="testDeepLink()">触发 Deep Link (jsview://test)</button>
+    </div>
+
     <script>
         let isLightState = true;
 
         // 初始化页面颜色
         document.body.style.backgroundColor = isLightState ? 'white' : 'black';
         document.body.style.color = isLightState ? 'black' : 'white';
+
+        function testDeepLink() {
+            const url = 'jsview://test';
+            console.log("尝试跳转 Deep Link:", url);
+            window.location.href = url;
+        }
 
         function callNative(method, message) {
             let paramObj = {};
