@@ -103,6 +103,18 @@
         <button onclick="callNative('vibrate', {amplitude: 50, duration: 100})">触发震动</button>
     </div>
 
+    <div class="section">
+        <h3>8. 复制到剪贴板测试</h3>
+        <p>点击下方按钮，将文本复制到系统剪贴板：</p>
+        <button onclick="callNative('copyToClipboard', {text: '这是一段测试复制的文本'})">复制测试文本</button>
+    </div>
+
+    <div class="section">
+        <h3>9. 原生分享测试</h3>
+        <p>点击下方按钮，唤起原生分享面板：</p>
+        <button class="success" onclick="callNative('shareTo', {title: '分享标题', content: '分享的文本内容', url: 'https://www.example.com'})">触发原生分享</button>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -170,6 +182,8 @@
                 paramObj = { url: message };
             } else if (method === 'vibrate') {
                 paramObj = message || { amplitude: 255, duration: 50 };
+            } else if (method === 'copyToClipboard' || method === 'shareTo') {
+                paramObj = message;
             }
 
             const request = {

@@ -32,4 +32,6 @@
     <string name="reauthorize">重新授权</string>
     <string name="go_to_settings">去设置</string>
     <string name="downloading_file">正在下载文件...</string>
+    <string name="copy_success">已复制到剪贴板</string>
+    <string name="share_to">分享至</string>
 </resources>

@@ -43,6 +43,8 @@ import com.ganha.test.bean.JsBean.Companion.js_refresh
 import com.ganha.test.bean.JsBean.Companion.js_removeSplashScreen
 import com.ganha.test.bean.JsBean.Companion.js_vibrate
 import com.ganha.test.bean.JsBean.Companion.sendJsNative
+import com.ganha.test.bean.JsBean.Companion.js_shareTo
+import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
 import com.ganha.test.bean.VibrateBean
@@ -432,6 +434,40 @@ class MainActivity : AppCompatActivity() {
                                     }
                                     .start()
                             }
+                        }
+                    }
+
+                    js_copyToClipboard -> {
+                        try {
+                            val copyBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.CopyBean::class.java)
+                            copyBean?.text?.let { textToCopy ->
+                                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("label", textToCopy)
+                                clipboard.setPrimaryClip(clip)
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, getString(R.string.copy_success), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    js_shareTo -> {
+                        try {
+                            val shareBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.ShareBean::class.java)
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                val shareText = buildString {
+                                    if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append("\n")
+                                    if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append("\n")
+                                    if (!shareBean?.url.isNullOrEmpty()) append(shareBean?.url)
+                                }.trim()
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            startActivity(Intent.createChooser(shareIntent, getString(R.string.share_to)))
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
                     }
 
