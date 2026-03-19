@@ -97,6 +97,12 @@
         <pre id="deviceInfoResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
     </div>
 
+    <div class="section">
+        <h3>7. 震动测试 (小幅度/模拟输入震动)</h3>
+        <p>点击下方按钮，触发设备的震动，可传入幅度和时长：</p>
+        <button onclick="callNative('vibrate', {amplitude: 50, duration: 100})">触发震动</button>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -162,6 +168,8 @@
                 }
             } else if (method === 'saveImageToGallery') {
                 paramObj = { url: message };
+            } else if (method === 'vibrate') {
+                paramObj = message || { amplitude: 255, duration: 50 };
             }
 
             const request = {

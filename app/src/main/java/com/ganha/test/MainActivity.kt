@@ -41,9 +41,14 @@ import com.ganha.test.bean.JsBean
 import com.ganha.test.bean.JsBean.Companion.js_openUrlExternally
 import com.ganha.test.bean.JsBean.Companion.js_refresh
 import com.ganha.test.bean.JsBean.Companion.js_removeSplashScreen
+import com.ganha.test.bean.JsBean.Companion.js_vibrate
 import com.ganha.test.bean.JsBean.Companion.sendJsNative
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
+import com.ganha.test.bean.VibrateBean
+import android.os.Vibrator
+import android.os.VibrationEffect
+import android.content.Context.VIBRATOR_SERVICE
 import com.ganha.test.viewmodel.MainViewModel
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
@@ -78,7 +83,6 @@ import java.io.ByteArrayOutputStream
 import android.webkit.ValueCallback
 import android.app.Activity
 import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
-import com.ganha.test.bean.JsBean.Companion.js_saveImage
 import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
 import com.ganha.test.utils.DeviceIdUtil
 import com.ganha.test.utils.DeviceInfoHelper
@@ -437,6 +441,24 @@ class MainActivity : AppCompatActivity() {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jsExterUrlBean.url))
                             startActivity(intent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    js_vibrate -> {
+                        try {
+                            val vibrateBean = Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java) ?: VibrateBean()
+                            val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+                            if (vibrator.hasVibrator()) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    val amplitude = if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
+                                    vibrator.vibrate(VibrationEffect.createOneShot(vibrateBean.duration, amplitude))
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    vibrator.vibrate(vibrateBean.duration)
+                                }
+                            }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }

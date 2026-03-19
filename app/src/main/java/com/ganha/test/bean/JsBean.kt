@@ -17,12 +17,10 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_saveImageToGallery = "saveImageToGallery"
         const val js_removeSplashScreen = "removeSplashScreen"
         const val js_onAppLifecycle = "onAppLifecycle"
-        const val js_appPageLoading = "appPageLoading"
         const val js_goBack = "goBack"
         const val js_refresh = "refreshPage"
         const val js_statusBarLight = "statusBarLight"
         const val js_openUrlExternally = "openUrlExternally"
-        const val js_saveImage = "saveImage"
 
 
         fun sendJsNative(jsName: String, webView: WebView?, jsonParams: String) {
