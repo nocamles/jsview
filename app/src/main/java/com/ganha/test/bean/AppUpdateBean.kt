@@ -5,6 +5,7 @@ data class AppUpdateBean(
     val updateUrl: String = "",
     val versionCode: Int = 0,
     val versionName: String = "",
+    val apkName:String = "",
     val isBackGround: Boolean = false,
     val isForceUpdate: Boolean = false
 )

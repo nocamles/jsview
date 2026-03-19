@@ -179,6 +179,22 @@ class MainActivity : AppCompatActivity() {
 
     private var isDownloading = false
     private var customDialog: Dialog? = null
+    private var updateDownloadJob: kotlinx.coroutines.Job? = null
+    
+    private var isAppInForeground = false
+    private var pendingInstallApkUri: Uri? = null
+    private val installPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (packageManager.canRequestPackageInstalls()) {
+                pendingInstallApkUri?.let { 
+                    installApk(it) 
+                    pendingInstallApkUri = null
+                }
+            } else {
+                Toast.makeText(this, "未授予安装权限", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     private var statusBarHeight: Int = 0
     private var navBarHeight: Int = 0
@@ -211,8 +227,33 @@ class MainActivity : AppCompatActivity() {
         initJsNative()
         initWebView()
         setupBackPressed()
+        checkAndClearDownloadCache()
         splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
         webView.loadUrl("file:///android_asset/myTest.html")
+    }
+
+    private fun checkAndClearDownloadCache() {
+        try {
+            val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            var currentVersion = 0
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            currentVersion = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode
+            }
+            val lastVersion = prefs.getInt("last_installed_version", -1)
+            if (currentVersion != lastVersion) {
+                val downloadDir = File(cacheDir, "downloadapk")
+                if (downloadDir.exists()) {
+                    downloadDir.deleteRecursively()
+                }
+                prefs.edit().putInt("last_installed_version", currentVersion).apply()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -472,28 +513,23 @@ class MainActivity : AppCompatActivity() {
                             )
                             if (appUpdateBean?.needUpdate == true && !appUpdateBean.updateUrl.isNullOrEmpty()) {
                                 runOnUiThread {
-                                    MyCustomTipsDialog(
-                                        this@MainActivity,
-                                        getString(R.string.tips) ?: "版本更新",
-                                        "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
-                                        getString(R.string.cancel) ?: "稍后提醒",
-                                        getString(R.string.save) ?: "立即更新",
-                                        onCancelListener = null,
-                                        onConfirmListener = {
-                                            //todo 临时处理跳转到浏览器下载.需要修改成downloadManager静默下载
-                                            try {
-                                                val intent = Intent(
-                                                    Intent.ACTION_VIEW,
-                                                    Uri.parse(appUpdateBean.updateUrl)
-                                                )
-                                                startActivity(intent)
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
+                                    if (appUpdateBean.isBackGround) {
+                                        downloadAppUpdate(appUpdateBean)
+                                    } else {
+                                        MyCustomTipsDialog(
+                                            this@MainActivity,
+                                            getString(R.string.tips) ?: "版本更新",
+                                            "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
+                                            getString(R.string.cancel) ?: "稍后提醒",
+                                            getString(R.string.save) ?: "立即更新",
+                                            onCancelListener = null,
+                                            onConfirmListener = {
+                                                downloadAppUpdate(appUpdateBean)
                                             }
-                                        }
-                                    ).apply {
-                                        setCancelable(false)
-                                    }.show()
+                                        ).apply {
+                                            setCancelable(!appUpdateBean.isForceUpdate)
+                                        }.show()
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -696,6 +732,184 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun downloadAppUpdate(appUpdateBean: AppUpdateBean) {
+        println(Gson().toJson(appUpdateBean))
+        val urlStr = appUpdateBean.updateUrl
+        val fileName = "${appUpdateBean.apkName}.apk"
+
+        val dir = File(cacheDir, "downloadapk")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        val file = File(dir, fileName)
+
+        if (file.exists() && file.length() > 0) {
+            installApk(Uri.fromFile(file))
+            return
+        }
+
+        if (!appUpdateBean.isBackGround) {
+            showCustomDialog(fileName, appUpdateBean.isForceUpdate)
+        }
+
+        isDownloading = true
+
+        customDialog?.findViewById<TextView>(R.id.btnCancel)?.setOnClickListener {
+            if (!appUpdateBean.isForceUpdate) {
+                updateDownloadJob?.cancel()
+                isDownloading = false
+                customDialog?.dismiss()
+                Toast.makeText(this, getString(R.string.download_canceled), Toast.LENGTH_SHORT).show()
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+        }
+
+        updateDownloadJob = lifecycleScope.launch(Dispatchers.IO) {
+            var isSuccess = false
+            var downloadedFile: File? = null
+
+            try {
+                var url = URL(urlStr)
+                var connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("User-Agent", WebSettings.getDefaultUserAgent(this@MainActivity))
+                connection.setRequestProperty("Accept-Encoding", "identity")
+                connection.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream, */*")
+                connection.setRequestProperty("Connection", "keep-alive")
+                connection.connectTimeout = 30000
+                connection.readTimeout = 30000
+                connection.instanceFollowRedirects = true
+
+                var redirectCount = 0
+                while (connection.responseCode / 100 == 3 && redirectCount < 5) {
+                    val newUrl = connection.getHeaderField("Location")
+                    connection.disconnect()
+                    url = URL(newUrl)
+                    connection = url.openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
+                    connection.setRequestProperty("User-Agent", WebSettings.getDefaultUserAgent(this@MainActivity))
+                    connection.setRequestProperty("Accept-Encoding", "identity")
+                    connection.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream, */*")
+                    connection.setRequestProperty("Connection", "keep-alive")
+                    connection.connectTimeout = 30000
+                    connection.readTimeout = 30000
+                    connection.instanceFollowRedirects = true
+                    redirectCount++
+                }
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val fileLength = connection.contentLength
+
+                    if (file.exists()) {
+                        file.delete()
+                    }
+
+                    val input: InputStream = connection.inputStream
+                    val output = FileOutputStream(file)
+
+                    val data = ByteArray(4096)
+                    var total: Long = 0
+                    var count: Int
+                    var lastProgress = -1
+
+                    while (input.read(data).also { count = it } != -1 && isActive && isDownloading) {
+                        total += count
+                        output.write(data, 0, count)
+
+                        if (fileLength > 0) {
+                            val progress = (total * 100 / fileLength).toInt()
+                            if (progress != lastProgress) {
+                                lastProgress = progress
+                                if (!appUpdateBean.isBackGround) {
+                                    withContext(Dispatchers.Main) {
+                                        progressBar?.progress = progress
+                                        tvProgress?.text = "$progress%"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    output.flush()
+                    output.close()
+                    input.close()
+
+                    if (isActive && isDownloading) {
+                        isSuccess = true
+                        downloadedFile = file
+                    } else {
+                        file.delete()
+                    }
+                }
+                connection.disconnect()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            withContext(Dispatchers.Main) {
+                if (isDownloading) {
+                    if (!appUpdateBean.isBackGround) {
+                        customDialog?.dismiss()
+                    }
+                    isDownloading = false
+
+                    if (isSuccess && downloadedFile != null) {
+                        installApk(Uri.fromFile(downloadedFile!!))
+                    } else {
+                        if (isActive) {
+                            Toast.makeText(this@MainActivity, "下载失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun installApk(apkUri: Uri) {
+        if (!isAppInForeground && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            pendingInstallApkUri = apkUri
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val hasInstallPermission = packageManager.canRequestPackageInstalls()
+            if (!hasInstallPermission) {
+                pendingInstallApkUri = apkUri
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                intent.data = Uri.parse("package:$packageName")
+                installPermissionLauncher.launch(intent)
+                return
+            }
+        }
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        
+        var finalUri = apkUri
+        if (apkUri.scheme == "file") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val file = File(apkUri.path ?: "")
+                if (file.exists()) {
+                    finalUri = androidx.core.content.FileProvider.getUriForFile(
+                        this,
+                        "$packageName.fileprovider",
+                        file
+                    )
+                }
+            }
+        }
+        
+        intent.setDataAndType(finalUri, "application/vnd.android.package-archive")
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "安装失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun startDownloadTask(
         url: String,
         userAgent: String,
@@ -703,7 +917,7 @@ class MainActivity : AppCompatActivity() {
         mimetype: String
     ) {
         val fileName = URLUtil.guessFileName(url, contentDisposition, mimetype)
-        showCustomDialog(fileName) {}
+        showCustomDialog(fileName, false)
 
         try {
             val request = DownloadManager.Request(Uri.parse(url)).apply {
@@ -823,13 +1037,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showCustomDialog(fileName: String, onCancel: () -> Unit) {
-        // 使用 Dialog 而不是 Builder
+    private fun showCustomDialog(fileName: String, isForceUpdate: Boolean = false) {
         val dialog = Dialog(this)
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_download_custom, null)
 
         dialog.setContentView(view)
-        dialog.setCancelable(false) // 禁止点击外部关闭
+        dialog.setCancelable(!isForceUpdate)
+        dialog.setCanceledOnTouchOutside(false)
 
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
@@ -839,6 +1053,9 @@ class MainActivity : AppCompatActivity() {
         tvFileName = view.findViewById(R.id.tvFileName)
         progressBar = view.findViewById(R.id.progressBar)
         tvProgress = view.findViewById(R.id.tvProgress)
+        
+        val btnCancel = view.findViewById<TextView>(R.id.btnCancel)
+        btnCancel.isVisible = !isForceUpdate
 
         tvFileName?.text = fileName
 
@@ -853,14 +1070,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        isAppInForeground = true
         webView.onResume()
         splash_webview?.onResume()
         webView.resumeTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
+        pendingInstallApkUri?.let { 
+            installApk(it)
+            pendingInstallApkUri = null 
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        isAppInForeground = false
         // 绑定生命周期：后台锁屏时必须调用 onPause() 解决幽灵声音 Bug
         webView.onPause()
         splash_webview?.onPause()
