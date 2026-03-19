@@ -1,6 +1,7 @@
 package com.ganha.test
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -31,6 +32,7 @@ import com.ganha.test.bean.JsBean
 import com.ganha.test.bean.JsBean.Companion.js_openUrlExternally
 import com.ganha.test.bean.JsBean.Companion.js_refresh
 import com.ganha.test.bean.JsBean.Companion.js_removeSplashScreen
+import com.ganha.test.bean.JsBean.Companion.sendJsNative
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
 import com.ganha.test.viewmodel.MainViewModel
@@ -38,10 +40,16 @@ import com.google.gson.Gson
 import kotlinx.coroutines.launch
 import kotlin.getValue
 import kotlin.jvm.java
+import androidx.core.view.isVisible
+import androidx.core.view.postDelayed
+import com.ganha.test.bean.JsBean.Companion.js_statusBarLight
+import com.ganha.test.bean.JsBean.Companion.sendEmptyJsNative
+import com.ganha.test.bean.StatusBarBean
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
     private var backPressedTime = 0L
@@ -74,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
 
         webView = findViewById(R.id.webView)
+        splash_webview = findViewById(R.id.webview_Splash)
         splashView = findViewById(R.id.splashView)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -85,45 +94,13 @@ class MainActivity : AppCompatActivity() {
         initJsNative()
         initWebView()
         setupBackPressed()
-
-        val mockHtml = """
-            <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <script>
-                        // 模拟加载完成后调用移除启动页
-                        window.onload = function() {
-                            setTimeout(function() {
-                                const request = {
-                                    methods: 'removeSplashScreen',
-                                    callback: `removeSplashScreen_callback`,
-                                    paramObj: null
-                                };
-                    
-                                // 调用 Android 原生方法
-                                try {
-                                    if (window.android && window.android.JSToNative) {
-                                        window.android.JSToNative(JSON.stringify(request));
-                                    } else {
-                                        // 如果在浏览器环境测试时，给出提示，方便调试
-                                        console.warn('当前非Android原生环境，桥接调用信息:', JSON.stringify(request));
-                                    }
-                                } catch (error) {
-                                    console.error('调用原生方法失败:', error);
-                                }
-                            }, 500);
-                        };
-                    </script>
-                </head>
-                <body style="background-color: #282c34; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
-                    <h1>Splash Demo Page</h1>
-                </body>
-            </html>
-        """.trimIndent()
-        webView.loadDataWithBaseURL("http://192.168.1.1", mockHtml, "text/html", "utf-8", null)
+        splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
+        webView.loadUrl("file:///android_asset/myTest.html")
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView() {
+        splash_webview?.settings?.javaScriptEnabled = true
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -174,6 +151,18 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                android.util.Log.e("WebViewTest", "主页面已加载完毕进入 onPageFinished: $url")
+
+                if(splashView.isVisible) {
+                    sendEmptyJsNative("finishAnimationFast", splash_webview)
+
+                    splashView.postDelayed({
+                        if (splashView.isVisible) {
+                            android.util.Log.e("WebViewTest", "JS未按时响应，触发兜底强制移除开屏页")
+                            sendEmptyJsNative("finishAnimationFast", splash_webview)
+                        }
+                    }, 1000)
+                }
             }
         }
 
@@ -199,6 +188,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(JsBean(viewModel), "android")
+        splash_webview?.addJavascriptInterface(JsBean(viewModel), "android")
     }
 
     private fun setupBackPressed() {
@@ -229,7 +219,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.messageFlow.collect { message ->
                 var jsMessage =
-                    Gson().fromJson<JsBeanRequest>(message, JsBeanRequest::class.java)
+                    Gson().fromJson(message, JsBeanRequest::class.java)
                 when (jsMessage.methods) {
                     js_refresh -> {
                         failedUrl?.let { url ->
@@ -239,13 +229,12 @@ class MainActivity : AppCompatActivity() {
 
                     js_removeSplashScreen -> {
                         runOnUiThread {
-                            webView.loadUrl("http://192.168.1.1")
                             if (splashView.visibility == View.VISIBLE) {
                                 splashView.animate()
                                     .alpha(0f)
                                     .setDuration(400)
                                     .withEndAction {
-                                        splashView.visibility = View.GONE
+                                        destroySplashWebView()
                                     }
                                     .start()
                             }
@@ -254,7 +243,7 @@ class MainActivity : AppCompatActivity() {
 
                     js_openUrlExternally ->{
                         var jsExterUrlBean =
-                            Gson().fromJson<JsExterUrlBean>(jsMessage.paramObj, JsExterUrlBean::class.java)
+                            Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jsExterUrlBean.url))
                             startActivity(intent)
@@ -262,18 +251,26 @@ class MainActivity : AppCompatActivity() {
                             e.printStackTrace()
                         }
                     }
+
+                    js_statusBarLight ->{
+                        var statusBarBean =
+                            Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
+                        setStatusBarTextColor(statusBarBean.isLight)
+                    }
                 }
             }
         }
     }
 
     fun showErrorView() {
+        destroySplashWebView()
         webView.loadUrl("file:///android_asset/net_error.html")
     }
 
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        splash_webview?.onResume()
         webView.resumeTimers()
     }
 
@@ -281,6 +278,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         // 绑定生命周期：后台锁屏时必须调用 onPause() 解决幽灵声音 Bug
         webView.onPause()
+        splash_webview?.onPause()
         webView.pauseTimers()
     }
 
@@ -289,6 +287,28 @@ class MainActivity : AppCompatActivity() {
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.clearHistory()
         webView.destroy()
+        splash_webview?.destroy()
         super.onDestroy()
+    }
+
+    /***
+     * 销毁开屏页
+     */
+    private fun destroySplashWebView() {
+        if (splash_webview != null) {
+            splashView.visibility = View.GONE
+
+            val parent = splash_webview?.parent as? ViewGroup
+            parent?.removeView(splash_webview)
+
+            splash_webview?.stopLoading()
+
+            // 4. 清除设置和数据
+            splash_webview?.settings?.javaScriptEnabled = false
+            splash_webview?.clearHistory()
+            splash_webview?.clearView() // 针对老版本API
+            splash_webview?.removeAllViews()
+            splash_webview?.loadUrl("about:blank")
+        }
     }
 }

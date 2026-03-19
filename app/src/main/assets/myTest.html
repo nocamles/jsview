@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Native 调试页</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            /* 增加颜色切换的过渡动画，让变化更平滑 */
+            transition: background-color 0.3s, color 0.3s;
+        }
+        button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            color: #333; /* 固定 pre 的文字颜色防止看不清 */
+        }
+    </style>
+</head>
+<body>
+<h3>JavaScript 调用 Native 调试</h3>
+
+<button onclick="callNative('statusBarLight')">1. 状态栏颜色修改</button>
+
+<script>
+    let isLightState = true;
+
+    // 初始化页面颜色，与初始的 isLightState = false 状态保持一致（黑底白字）
+    document.body.style.backgroundColor = isLightState ? 'white' : 'black';
+    document.body.style.color = isLightState ? 'black' : 'white';
+
+    function callNative(method, message) {
+        // 根据method处理不同参数
+        let paramObj = {};
+
+        if(method === 'statusBarLight'){
+            isLightState = !isLightState;
+            paramObj = { isLight: isLightState };
+
+            // 根据 isLight 的值动态切换页面背景色和文字颜色
+            if (isLightState) {
+                document.body.style.backgroundColor = 'white';
+                document.body.style.color = 'black'; // 背景变白时，文字设为黑色
+            } else {
+                document.body.style.backgroundColor = 'black';
+                document.body.style.color = 'white'; // 背景变黑时，文字设为白色
+            }
+        }
+
+        const request = {
+            methods: method,
+            callback: `${method}_callback`,
+            paramObj: paramObj  // 修正后的参数对象
+        };
+
+        console.log("发送数据:", JSON.stringify(request, null, 2));
+        if (window.android && window.android.JSToNative) {
+            window.android.JSToNative(JSON.stringify(request));
+        } else {
+            console.error("Native桥接方法不存在");
+        }
+    }
+</script>
+</body>
+</html>

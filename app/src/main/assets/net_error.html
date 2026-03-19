@@ -1,103 +1,155 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- 针对移动端进行视口优化，禁止缩放 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>网络连接失败</title>
+    <title>Sem Conexão</title>
     <style>
-        /* 基础重置 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            /* 禁止长按选中文本和高亮 */
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+        /* =========================================================
+           1. 品牌主题色配置区 (已强制替换为 GanhaGo 专属视觉规范)
+           ========================================================= */
+        :root {
+            /* 核心品牌色 */
+            --brand-primary: #00D26A;     /* GanhaGo 霓虹绿 (参考图1的Fazer按钮) */
+            --brand-shadow: rgba(0, 210, 106, 0.25); /* 绿色发光阴影 */
+            
+            /* 强制深色模式色彩 */
+            --bg-color: #0B0F19;          /* App 极暗藏青色背景 */
+            --icon-bg: rgba(0, 210, 106, 0.08); /* 图标底座使用极微弱的绿色光晕 */
+            --icon-stroke: #00D26A;       /* 断网图标线条使用纯正霓虹绿 */
+            --text-title: #FFFFFF;        /* 标题纯白 */
+            --text-desc: #9CA3AF;         /* 描述文案高级灰 */
+            --btn-text: #0B0F19;          /* 按钮文字使用深色，与绿色底色形成高对比度 */
         }
 
+        /* 删除了 prefers-color-scheme，强制全局使用 App 主题色，杜绝白屏闪瞎眼 */
+
+        /* =========================================================
+           2. 全局排版与原生防误触
+           ========================================================= */
         body {
-            background-color: #F7F8FA; /* 柔和的浅灰色背景 */
-            font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-
-        .error-container {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
             text-align: center;
-            padding: 0 32px;
-            animation: fadeIn 0.5s ease-out; /* 简单的渐显动画 */
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* 动画定义 */
+        .container {
+            padding: 30px 20px;
+            max-width: 85%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* =========================================================
+           3. UI 元素美化
+           ========================================================= */
+        /* 图标底座 (带有微弱的呼吸感光晕) */
         .icon-wrapper {
-            margin-bottom: 24px;
+            width: 100px;
+            height: 100px;
+            background-color: var(--icon-bg);
+            border-radius: 50%;
             display: flex;
             justify-content: center;
+            align-items: center;
+            margin-bottom: 32px;
+            border: 1px solid rgba(0, 210, 106, 0.1);
+            box-shadow: 0 0 30px rgba(0, 210, 106, 0.05);
         }
 
-        /* SVG 图标样式 */
-        .error-icon {
-            width: 120px;
-            height: 120px;
-            color: #C8D0D8;
+        .icon {
+            width: 48px;
+            height: 48px;
+            stroke: var(--icon-stroke);
         }
 
         h1 {
-            font-size: 20px;
-            color: #333333;
-            font-weight: 600;
-            margin-bottom: 12px;
-            letter-spacing: 0.5px;
+            font-size: 24px;
+            margin: 0 0 12px 0;
+            font-weight: 800;
+            color: var(--text-title);
+            letter-spacing: -0.5px;
         }
 
         p {
-            font-size: 14px;
-            color: #888888;
+            font-size: 15px;
+            color: var(--text-desc);
+            margin: 0 0 40px 0;
             line-height: 1.5;
-            margin-bottom: 40px;
         }
 
-        /* 按钮样式 */
-        .retry-btn {
-            background: linear-gradient(135deg, #4A90E2 0%, #007AFF 100%);
-            color: #FFFFFF;
+        /* 高级感实体按钮 (1:1 还原图1的按钮风格) */
+        .btn {
+            background: var(--brand-primary);
+            color: var(--btn-text);
             border: none;
-            border-radius: 25px;
-            padding: 14px 0;
-            width: 200px;
+            padding: 16px 0;
             font-size: 16px;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
-            transition: all 0.2s ease;
-            outline: none;
+            border-radius: 28px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            max-width: 280px;
+            box-shadow: 0 4px 20px var(--brand-shadow);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
 
-        /* 移动端按钮按下效果 */
-        .retry-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
-            background: linear-gradient(135deg, #3A7BC2 0%, #0062CC 100%);
+        .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 2px 10px var(--brand-shadow);
+            background: #00BF5F; /* 按下时稍微变暗一点 */
+        }
+
+        /* 按钮加载动画状态 */
+        .btn.loading {
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(11, 15, 25, 0.3); /* 深色转圈，适配按钮颜色 */
+            border-top-color: var(--btn-text);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn.loading .spinner {
+            display: block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-    <div class="error-container">
-        <!-- 无网络连接的矢量SVG图标 -->
+    <div class="container">
         <div class="icon-wrapper">
-            <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="1" y1="1" x2="23" y2="23"></line>
                 <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
                 <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
@@ -107,46 +159,53 @@
                 <line x1="12" y1="20" x2="12.01" y2="20"></line>
             </svg>
         </div>
-        
-        <h1>网络连接似乎断开了</h1>
-        <p>请检查您的网络设置，或点击下方按钮重试</p>
-        
-        <button class="retry-btn" id="retryBtn" onclick="onRetryClick()">点击重试</button>
+
+        <h1>Ops! Sem conexão</h1>
+        <p>Parece que você está offline.<br>Verifique sua internet e tente novamente.</p>
+
+        <button class="btn" id="retryBtn" onclick="retryLoad()">
+            <span class="spinner"></span>
+            <span id="btnText">Tentar Novamente</span>
+        </button>
     </div>
 
     <script>
-        function onRetryClick() {
-            // 按钮点击时的视觉反馈（将文字短暂变为"加载中..."）
+        function retryLoad() {
             const btn = document.getElementById('retryBtn');
-            const originalText = btn.innerText;
-            btn.innerText = '正在重试...';
-            btn.style.opacity = '0.8';
+            const btnText = document.getElementById('btnText');
             
+            // 切换为加载中 UI 状态
+            btn.classList.add('loading');
+            btnText.innerText = 'Conectando...';
+
+            // 延迟一点点时间执行重试，给用户视觉反馈
             setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.opacity = '1';
-            }, 1000); // 1秒后恢复文字，以防App没立刻刷新掉当前页面
+                 const request = {
+                    methods: 'refreshPage',
+                    callback: `refresh_callback`,
+                    paramObj: null
+                };
 
-            // 构造您要求的 JSON 参数
-            const request = {
-                methods: 'refreshPage',
-                callback: `refresh_callback`,
-                paramObj: null
-            };
-
-            // 调用 Android 原生方法
-            try {
-                if (window.android && window.android.JSToNative) {
-                    window.android.JSToNative(JSON.stringify(request));
-                } else {
-                    // 如果在浏览器环境测试时，给出提示，方便调试
-                    console.warn('当前非Android原生环境，桥接调用信息:', JSON.stringify(request));
+                // 调用 Android 原生方法
+                try {
+                    if (window.android && window.android.JSToNative) {
+                        window.android.JSToNative(JSON.stringify(request));
+                    } else {
+                        // 如果在浏览器环境测试时，给出提示，方便调试
+                        console.warn('当前非Android原生环境，桥接调用信息:', JSON.stringify(request));
+                    }
+                } catch (error) {
+                    console.error('调用原生方法失败:', error);
                 }
-            } catch (error) {
-                console.error('调用原生方法失败:', error);
-            }
+
+                // 如果 3 秒后页面还没刷走，说明还是没网，恢复按钮状态
+                setTimeout(() => {
+                    btn.classList.remove('loading');
+                    btnText.innerText = 'Tentar Novamente';
+                }, 3000);
+
+            }, 300); // 缓冲时间
         }
     </script>
-
 </body>
 </html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splash Screen - Optimized GanhaGO</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+          --bg-color: #0F1420;
+          --primary-green: #00D68F;
+          --accent-gold: #FCD34D;
+          --dark-gold: #B45309;
+        }
+
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          margin: 0;
+          background-color: var(--bg-color);
+        }
+
+        .splash-container {
+          background-color: var(--bg-color);
+          font-family: 'Inter', sans-serif;
+          color: #ffffff;
+          height: 100vh;
+          width: 100%;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          position: relative;
+          z-index: 9999;
+          transition: opacity 0.5s ease;
+        }
+
+        .bg-glow-top {
+          position: absolute;
+          top: -10%; left: 50%; transform: translateX(-50%);
+          width: 120%; height: 50%;
+          background: radial-gradient(circle, rgba(0, 214, 143, 0.08) 0%, transparent 70%);
+          z-index: 0;
+          animation: pulse-light 4s infinite alternate;
+        }
+
+        .phone-silhouette {
+          position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          width: 280px; height: 520px;
+          border: 2px solid rgba(255,255,255,0.02);
+          border-radius: 44px;
+          z-index: 0;
+          box-shadow: inset 0 0 60px rgba(0, 214, 143, 0.03), 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        .phone-notch {
+          position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+          width: 80px; height: 20px;
+          background: rgba(0,0,0,0.3); border-radius: 10px;
+        }
+
+        .particle {
+          position: absolute; background: var(--accent-gold); border-radius: 50%; opacity: 0;
+          animation: rise 4s infinite ease-in;
+        }
+
+        .top-brand-area {
+          z-index: 10; margin-top: 10vh; display: flex; flex-direction: column;
+          align-items: center; gap: 18px; animation: float-breathe 5s ease-in-out infinite;
+        }
+
+        .logo-text {
+          width: 120px; height: 120px; box-shadow: 0 0 35px rgba(0, 214, 143, 0.4);
+          border-radius: 28px; opacity: 0;
+          animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .logo-text img { width: 100%; height: 100%; object-fit: cover; border-radius: 28px; }
+
+        .brand-title {
+          font-size: 48px; font-weight: 900; letter-spacing: 1.5px; line-height: 1;
+          opacity: 0; animation: fadeInUp 0.6s ease 0.1s forwards;
+          display: flex; align-items: baseline; gap: 12px;
+        }
+
+        .brand-title .text-white { color: #ffffff; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        .brand-title .text-green {
+          background: linear-gradient(180deg, #00D68F 0%, #009966 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 0 15px rgba(0, 214, 143, 0.6)) drop-shadow(0 6px 15px rgba(0,0,0,0.5));
+        }
+
+        .hero-text-container {
+          z-index: 10; text-align: center; width: 100%; padding: 0 20px; margin: auto 0;
+          display: flex; flex-direction: column; align-items: center;
+          animation: gentle-breathe 6s ease-in-out infinite alternate;
+        }
+
+        .text-action {
+          font-size: 28px; font-weight: 900; color: white; line-height: 1; margin-bottom: 8px;
+          letter-spacing: 2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+          opacity: 0; animation: fadeInUp 0.6s ease 0.2s forwards;
+        }
+
+        .text-core {
+          font-size: 52px; font-weight: 900; text-transform: uppercase;
+          background: linear-gradient(180deg, var(--accent-gold) 0%, var(--dark-gold) 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 4px 0px rgba(146, 64, 14, 0.3));
+          line-height: 0.9; margin-bottom: 28px; letter-spacing: -1px;
+          opacity: 0; animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.3s forwards;
+        }
+
+        .text-method-badge {
+          display: inline-flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+          padding: 12px 24px; border-radius: 50px; backdrop-filter: blur(8px);
+          opacity: 0; animation: fadeInUp 0.6s ease 0.4s forwards; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .badge-text { color: #E5E7EB; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px; }
+        .dot-sep { color: var(--primary-green); font-size: 4px; opacity: 0.8; }
+        .highlight-pix { color: var(--primary-green); font-weight: 800; }
+
+        .loader-area {
+          width: 100%; padding: 0 40px 6vh 40px; z-index: 10; text-align: center;
+          opacity: 0; animation: fadeIn 0.5s ease 0.2s forwards;
+        }
+
+        .progress-track {
+          width: 100%; height: 4px; background: rgba(255,255,255,0.1);
+          border-radius: 2px; overflow: hidden; margin-bottom: 12px; transform: translateZ(0);
+        }
+
+        .progress-bar {
+          height: 100%; width: 0%; border-radius: 2px;
+          background: linear-gradient(90deg, var(--primary-green), #10B981);
+          box-shadow: 0 0 15px rgba(0, 214, 143, 0.6);
+          /* 初始过渡动画设为短时间，后续通过JS动态改变 */
+          transition: width 15ms linear;
+          will-change: width;
+        }
+
+        .loading-status {
+          font-size: 10px; color: #6B7280; font-family: monospace;
+          letter-spacing: 2px; text-transform: uppercase;
+        }
+
+        @keyframes float-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.02); } }
+        @keyframes gentle-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+        @keyframes pulse-light { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+        @keyframes rise { 0% { bottom: -10px; opacity: 0; } 50% { opacity: 0.5; } 100% { bottom: 100vh; opacity: 0; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="splash-container" id="splash">
+    <div class="bg-glow-top"></div>
+    <div class="phone-silhouette"><div class="phone-notch"></div></div>
+
+    <div class="particle" style="left: 15%; width: 4px; height: 4px; animation-duration: 5s;"></div>
+    <div class="particle" style="left: 85%; width: 6px; height: 6px; animation-duration: 7s; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 50%; width: 3px; height: 3px; animation-duration: 4s; animation-delay: 2s;"></div>
+
+    <div class="top-brand-area">
+        <div class="logo-text">
+            <img src="https://img.ganhagorewarda.com/a8/9094549a832cca4609b7215ee8955d.png" alt="GanhaGO Logo">
+        </div>
+        <div class="brand-title"><span class="text-white">Ganha</span><span class="text-green">GO</span></div>
+    </div>
+
+    <div class="hero-text-container">
+        <div class="text-action">GANHE DINHEIRO</div>
+        <div class="text-core">DE VERDADE</div>
+        <div class="text-method-badge">
+            <div class="badge-text">
+                <span>Simples</span><i class="fas fa-circle dot-sep"></i>
+                <span>Rápido</span><i class="fas fa-circle dot-sep"></i>
+                <span class="highlight-pix">No seu Pix</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="loader-area">
+        <div class="progress-track">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p class="loading-status" id="loading-status">INICIALIZANDO...</p>
+    </div>
+</div>
+
+<script>
+    let progress = 0;
+    let statusText = 'INICIALIZANDO...';
+
+    let fastTimer = null; // 控制 0~90 的快速定时器
+    let slowTimer = null; // 控制 90~99 的慢速超时定时器
+
+    let isPageReady = false;
+    let isFinishing = false;
+
+    let progressBarEl = null;
+    let loadingStatusEl = null;
+
+    // 更新界面 UI
+    function updateTextUI() {
+      if (!progressBarEl || !loadingStatusEl) return;
+
+      if (progress > 30 && progress <= 70) statusText = "BUSCANDO TAREFAS...";
+      else if (progress > 70 && progress < 90) statusText = "PREPARANDO AMBIENTE...";
+      else if (progress >= 90 && progress < 100) statusText = "CONECTANDO AO SERVIDOR..."; // 90~99 时的文本
+      else if (progress >= 100) statusText = "BEM-VINDO!";
+
+      loadingStatusEl.innerText = statusText;
+      progressBarEl.style.width = progress + '%';
+    }
+
+    // 全部完成跳转
+    function handleComplete() {
+      progress = 100;
+      updateTextUI();
+
+      setTimeout(() => {
+        const request = {
+            methods: 'removeSplashScreen',
+            callback: ``,
+            paramObj: null
+        };
+
+        try {
+            if (window.android && window.android.JSToNative) {
+                window.android.JSToNative(JSON.stringify(request));
+            } else {
+                console.warn('当前非Android原生环境，桥接调用:', JSON.stringify(request));
+            }
+        } catch (error) {
+            console.error('调用原生方法失败:', error);
+        }
+      }, 500);
+    }
+
+    // 阶段3：执行 90% (或99%) 到 100% 的冲刺收尾
+    function doFinishSequence() {
+      if (isFinishing) return;
+      isFinishing = true;
+
+      clearInterval(fastTimer);
+      clearInterval(slowTimer);
+
+      // 恢复较快的 CSS 过渡，保证最后冲刺顺滑
+      progressBarEl.style.transition = 'width 20ms linear';
+
+      fastTimer = setInterval(() => {
+        progress += 2;
+
+        if (progress >= 100) {
+          clearInterval(fastTimer);
+          progress = 100;
+          handleComplete();
+        } else {
+          updateTextUI();
+        }
+      }, 20);
+    }
+
+    // 供原生调用的完成方法
+    window.finishAnimationFast = function() {
+      isPageReady = true;
+      // 如果进度已经过了90且还没开始收尾，立刻收尾
+      if (progress >= 90 && !isFinishing) {
+        doFinishSequence();
+      }
+    };
+
+    // 启动加载链
+    function startLoading() {
+      progressBarEl.style.transition = 'width 15ms linear';
+
+      // 阶段1：0% ~ 90% (极速，约 1.35 秒)
+      fastTimer = setInterval(() => {
+        if (progress < 90) {
+          progress += 1;
+          updateTextUI();
+        } else {
+          // 跑到了 90%，清除极速定时器
+          clearInterval(fastTimer);
+
+          if (isPageReady && !isFinishing) {
+            // 如果原生网页已经好了，直接收尾
+            doFinishSequence();
+          } else if (!isFinishing) {
+            // 阶段2：原生网页还没好，进入“超时等待”极慢速模式 (90% ~ 99%)
+
+            // 调整 CSS 的缓动时间，让极慢速时不会一卡一卡的
+            progressBarEl.style.transition = 'width 100ms linear';
+
+            // 策略：每 100毫秒 增加 0.03%。
+            // 从 90 到 99 总共需要走 9%。 9 / 0.03 = 300次。
+            // 300次 * 100ms = 30000ms (恰好等于 30秒 的标准 WebView Timeout 时间)
+            slowTimer = setInterval(() => {
+              // 在慢速爬行的过程中，如果原生通知加载完成了，直接中断并收尾
+              if (isPageReady && !isFinishing) {
+                doFinishSequence();
+                return;
+              }
+
+              if (progress < 99) {
+                progress += 0.03;
+                updateTextUI();
+              } else {
+                // 到达 99% 后停住，等待原生的 onReceivedError 或页面最终响应
+                progress = 99;
+                clearInterval(slowTimer);
+                // 可以加上提示 "Rede instável, aguarde..." (网络不稳定，请稍候)
+                statusText = "AGUARDANDO RESPOSTA...";
+                loadingStatusEl.innerText = statusText;
+              }
+            }, 100);
+          }
+        }
+      }, 15);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      progressBarEl = document.getElementById('progress-bar');
+      loadingStatusEl = document.getElementById('loading-status');
+      startLoading();
+    });
+</script>
+</body>
+</html>
