@@ -115,6 +115,18 @@
         <button class="success" onclick="callNative('shareTo', {title: '分享标题', content: '分享的文本内容', url: 'https://www.example.com'})">触发原生分享</button>
     </div>
 
+    <div class="section">
+        <h3>10. WebView 返回测试</h3>
+        <p>点击下方按钮，触发原生 WebView 的 goBack()，若无法返回则退出页面：</p>
+        <button onclick="callNative('goBack')">返回上一页 (goBack)</button>
+    </div>
+
+    <div class="section">
+        <h3>11. 前后台状态监听 (onAppLifecycle)</h3>
+        <p>将 App 切换至后台再切回前台，观察下方状态变化：</p>
+        <pre id="lifecycleResult" style="white-space: pre-wrap; word-wrap: break-word;">当前状态: 初始化</pre>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -233,6 +245,17 @@
                 resultElement.textContent = jsonStr;
             }
             resultElement.style.display = 'block';
+        }
+
+        function onAppLifecycle(jsonStr) {
+            console.log("收到App生命周期状态返回:", jsonStr);
+            const resultElement = document.getElementById('lifecycleResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = "当前状态: " + (jsonObj.status === 'foreground' ? '前台 (foreground)' : '后台 (background)') + "\n" + new Date().toLocaleString();
+            } catch (e) {
+                resultElement.textContent = "当前状态: " + jsonStr;
+            }
         }
     </script>
 </body>

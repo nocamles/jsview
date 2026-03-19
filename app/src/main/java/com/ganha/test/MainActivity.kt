@@ -45,6 +45,8 @@ import com.ganha.test.bean.JsBean.Companion.js_vibrate
 import com.ganha.test.bean.JsBean.Companion.sendJsNative
 import com.ganha.test.bean.JsBean.Companion.js_shareTo
 import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
+import com.ganha.test.bean.JsBean.Companion.js_goBack
+import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
 import com.ganha.test.bean.VibrateBean
@@ -417,6 +419,16 @@ class MainActivity : AppCompatActivity() {
                 var jsMessage =
                     Gson().fromJson(message, JsBeanRequest::class.java)
                 when (jsMessage.methods) {
+                    js_goBack -> {
+                        runOnUiThread {
+                            if (webView.canGoBack()) {
+                                webView.goBack()
+                            } else {
+                                finish()
+                            }
+                        }
+                    }
+
                     js_refresh -> {
                         failedUrl?.let { url ->
                             webView.loadUrl(url)
@@ -709,6 +721,7 @@ class MainActivity : AppCompatActivity() {
         webView.onResume()
         splash_webview?.onResume()
         webView.resumeTimers()
+        sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
     }
 
     override fun onPause() {
@@ -717,6 +730,7 @@ class MainActivity : AppCompatActivity() {
         webView.onPause()
         splash_webview?.onPause()
         webView.pauseTimers()
+        sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"background\"}")
     }
 
     override fun onDestroy() {
