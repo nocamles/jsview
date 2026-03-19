@@ -2,22 +2,31 @@ package com.ganha.test
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Dialog
+import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
+import android.webkit.URLUtil
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -45,6 +54,14 @@ import androidx.core.view.postDelayed
 import com.ganha.test.bean.JsBean.Companion.js_statusBarLight
 import com.ganha.test.bean.JsBean.Companion.sendEmptyJsNative
 import com.ganha.test.bean.StatusBarBean
+import com.ganha.test.utils.PermissionHelper
+import com.ganha.test.utils.RequestCallback
+import com.hjq.permissions.permission.PermissionLists
+import com.hjq.permissions.permission.dangerous.WriteExternalStoragePermission
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -56,6 +73,18 @@ class MainActivity : AppCompatActivity() {
     private var failedUrl: String? = null
     private var pendingPermissionRequest: PermissionRequest? = null
     private val viewModel: MainViewModel by viewModels()
+
+    private var progressBar: ProgressBar? = null
+    private var tvProgress: TextView? = null
+    private var tvFileName: TextView? = null
+
+    private var isDownloading = false
+    private var customDialog: Dialog? = null
+
+    private var statusBarHeight: Int = 0
+    private var navBarHeight: Int = 0
+
+    private val MIN_DISPLAY_TIME = 1500L
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -114,6 +143,38 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        }
+
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+            if (isDownloading) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "任务正在下载中，请稍后...",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setDownloadListener
+            }
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                PermissionHelper.checkPermission(
+                    this@MainActivity, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
+                    "下载文件需要授权存储权限。", "存储权限,请在设置中开启相机权限",
+                    object : RequestCallback {
+                        override fun onGranted() {
+                            startDownloadTask(url, userAgent, contentDisposition, mimetype)
+                        }
+
+                        override fun onDenied() {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "权限获取失败",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                )
+            } else {
+                startDownloadTask(url, userAgent, contentDisposition, mimetype)
+            }
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -260,6 +321,151 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun startDownloadTask(
+        url: String,
+        userAgent: String,
+        contentDisposition: String,
+        mimetype: String
+    ) {
+        val fileName = URLUtil.guessFileName(url, contentDisposition, mimetype)
+        showCustomDialog(fileName) {}
+
+        try {
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                val cookie = CookieManager.getInstance().getCookie(url)
+                addRequestHeader("Cookie", cookie)
+                addRequestHeader("User-Agent", userAgent)
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setTitle(fileName)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            }
+
+            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val downloadId = downloadManager.enqueue(request)
+
+            customDialog?.findViewById<TextView>(R.id.btnCancel)?.setOnClickListener {
+                downloadManager.remove(downloadId) // 移除下载任务
+                isDownloading = false
+                customDialog?.dismiss()
+                Toast.makeText(this, "已取消下载", Toast.LENGTH_SHORT).show()
+            }
+
+            observeDownloadProgress(downloadManager, downloadId, fileName)
+
+        } catch (e: Exception) {
+            isDownloading = false
+            customDialog?.dismiss()
+            Toast.makeText(this, "创建任务失败", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun observeDownloadProgress(
+        manager: DownloadManager,
+        downloadId: Long,
+        fileName: String
+    ) {
+        val startTime = System.currentTimeMillis()
+
+        isDownloading = true
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            var finishDownload = false
+            var isSuccess = false
+
+            while (!finishDownload && isActive && isDownloading) {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = manager.query(query)
+
+                if (cursor != null && cursor.moveToFirst()) {
+                    val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val loadedIndex =
+                        cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+
+                    if (totalIndex != -1 && loadedIndex != -1 && statusIndex != -1) {
+                        val total = cursor.getLong(totalIndex)
+                        val loaded = cursor.getLong(loadedIndex)
+                        val status = cursor.getInt(statusIndex)
+
+                        val progress = if (total > 0) ((loaded * 100) / total).toInt() else 0
+
+                        // 更新 UI
+                        withContext(Dispatchers.Main) {
+                            progressBar?.progress = progress
+                            tvProgress?.text = "$progress%"
+                        }
+
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            finishDownload = true
+                            isSuccess = true
+                        } else if (status == DownloadManager.STATUS_FAILED) {
+                            finishDownload = true
+                            isSuccess = false
+                        }
+                    }
+                } else {
+                    finishDownload = true
+                }
+                cursor?.close()
+
+                if (!finishDownload) delay(200)
+            }
+
+            val endTime = System.currentTimeMillis()
+            val timeElapsed = endTime - startTime
+            if (timeElapsed < MIN_DISPLAY_TIME) {
+                delay(MIN_DISPLAY_TIME - timeElapsed)
+            }
+
+            withContext(Dispatchers.Main) {
+                if (isDownloading) {
+                    customDialog?.dismiss()
+                    isDownloading = false
+
+                    if (isSuccess) {
+                        val path = "${Environment.DIRECTORY_DOWNLOADS}/$fileName"
+                        Toast.makeText(
+                            this@MainActivity,
+                            "下载成功！\n位置: $path",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        if (finishDownload) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "下载失败或文件错误",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showCustomDialog(fileName: String, onCancel: () -> Unit) {
+        // 使用 Dialog 而不是 Builder
+        val dialog = Dialog(this)
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_download_custom, null)
+
+        dialog.setContentView(view)
+        dialog.setCancelable(false) // 禁止点击外部关闭
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val width = (resources.displayMetrics.widthPixels * 0.85).toInt()
+        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        tvFileName = view.findViewById(R.id.tvFileName)
+        progressBar = view.findViewById(R.id.progressBar)
+        tvProgress = view.findViewById(R.id.tvProgress)
+
+        tvFileName?.text = fileName
+
+        customDialog = dialog
+        dialog.show()
     }
 
     fun showErrorView() {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#E0E0E0"> <!-- 点击时的波纹颜色 -->
+    <item>
+        <shape>
+            <solid android:color="#F5F5F5"/> <!-- 浅灰色背景 -->
+            <corners android:radius="20dp"/> <!-- 按钮大圆角 -->
+        </shape>
+    </item>
+</ripple>
