@@ -5,6 +5,7 @@ import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
 import androidx.appcompat.app.AlertDialog
 import com.hjq.permissions.permission.base.IPermission
+import com.ganha.test.showTipsDialog
 
 /**
  * 权限请求结果回调
@@ -44,46 +45,51 @@ object PermissionHelper {
             return
         }
 
-        // 2. 发起权限请求
-        XXPermissions.with(activity)
-            .permissions(permissions)
-            .request(object : OnPermissionCallback {
-
-                override fun onResult(
-                    grantedList: List<IPermission?>,
-                    deniedList: List<IPermission?>
-                ) {
-                    if (deniedList.isEmpty()) {
-                        callBack.onGranted()
-                    } else {
-                        val doNotAskAgain =
-                            XXPermissions.isDoNotAskAgainPermissions(activity, deniedList)
-                        if (doNotAskAgain) {
-                            showSettingDialog(
-                                activity,
-                                deniedList,
-                                forwardtoSettingReason,
-                                callBack
-                            )
-                        } else {
-                            showExplainDialog(
-                                activity,
-                                permissions,
-                                explainReason,
-                                forwardtoSettingReason,
-                                callBack
-                            )
+        // 2. 弹窗提示用户权限说明，确认后发起权限请求
+        activity.showTipsDialog(
+            title = "权限申请",
+            content = explainReason,
+            cancelText = "取消",
+            confirmText = "去授权",
+            onCancelListener = {
+                // 用户拒绝弹窗，回调失败
+                callBack.onDenied()
+            },
+            onConfirmListener = {
+                // 发起权限请求
+                XXPermissions.with(activity)
+                    .permissions(permissions)
+                    .request(object : OnPermissionCallback {
+                        override fun onResult(
+                            grantedList: List<IPermission?>,
+                            deniedList: List<IPermission?>
+                        ) {
+                            if (deniedList.isEmpty()) {
+                                callBack.onGranted()
+                            } else {
+                                val doNotAskAgain =
+                                    XXPermissions.isDoNotAskAgainPermissions(activity, deniedList)
+                                if (doNotAskAgain) {
+                                    showSettingDialog(
+                                        activity,
+                                        deniedList,
+                                        forwardtoSettingReason,
+                                        callBack
+                                    )
+                                } else {
+                                    showExplainDialog(
+                                        activity,
+                                        permissions,
+                                        explainReason,
+                                        forwardtoSettingReason,
+                                        callBack
+                                    )
+                                }
+                            }
                         }
-                        showExplainDialog(
-                            activity,
-                            permissions,
-                            explainReason,
-                            forwardtoSettingReason,
-                            callBack
-                        )
-                    }
-                }
-            })
+                    })
+            }
+        )
     }
 
     /**

@@ -81,12 +81,57 @@
         <button class="success" onclick="testDeepLink()">触发 Deep Link (jsview://test)</button>
     </div>
 
+    <div class="section">
+        <h3>5. 权限申请测试 (相机 & 麦克风)</h3>
+        <p>点击下方按钮，测试 WebView 是否正常拦截 H5 的权限请求并映射为系统权限申请：</p>
+        <button onclick="requestCamera()">申请相机权限</button>
+        <button onclick="requestMicrophone()">申请麦克风权限</button>
+        <video id="videoElement" autoplay playsinline style="display:none; width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; background: #000;"></video>
+        <audio id="audioElement" autoplay controls style="display:none; width: 100%; margin-top: 10px;"></audio>
+    </div>
+
     <script>
         let isLightState = true;
 
         // 初始化页面颜色
         document.body.style.backgroundColor = isLightState ? 'white' : 'black';
         document.body.style.color = isLightState ? 'black' : 'white';
+
+        function requestCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        const video = document.getElementById('videoElement');
+                        video.srcObject = stream;
+                        video.style.display = 'block';
+                        alert("相机权限申请成功！");
+                    })
+                    .catch(function(err) {
+                        console.error("相机权限申请失败: ", err);
+                        alert("相机权限申请失败: " + err.message);
+                    });
+            } else {
+                alert("当前环境不支持 getUserMedia API");
+            }
+        }
+
+        function requestMicrophone() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        const audio = document.getElementById('audioElement');
+                        audio.srcObject = stream;
+                        audio.style.display = 'block';
+                        alert("麦克风权限申请成功！");
+                    })
+                    .catch(function(err) {
+                        console.error("麦克风权限申请失败: ", err);
+                        alert("麦克风权限申请失败: " + err.message);
+                    });
+            } else {
+                alert("当前环境不支持 getUserMedia API");
+            }
+        }
 
         function testDeepLink() {
             const url = 'jsview://test';

@@ -168,20 +168,7 @@ class MainActivity : AppCompatActivity() {
 
     private val MIN_DISPLAY_TIME = 1500L
 
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        var allGranted = true
-        permissions.entries.forEach {
-            if (!it.value) allGranted = false
-        }
-        if (allGranted && pendingPermissionRequest != null) {
-            pendingPermissionRequest?.grant(pendingPermissionRequest?.resources)
-        } else {
-            pendingPermissionRequest?.deny()
-        }
-        pendingPermissionRequest = null
-    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -331,18 +318,36 @@ class MainActivity : AppCompatActivity() {
             override fun onPermissionRequest(request: PermissionRequest?) {
                 if (request == null) return
                 pendingPermissionRequest = request
-                val androidPermissions = mutableListOf<String>()
+                val ipPermissions = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
                 for (res in request.resources) {
                     if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE) {
-                        androidPermissions.add(Manifest.permission.CAMERA)
+                        ipPermissions.add(PermissionLists.getCameraPermission())
                     } else if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
-                        androidPermissions.add(Manifest.permission.RECORD_AUDIO)
+                        ipPermissions.add(PermissionLists.getRecordAudioPermission())
                     }
                 }
-                if (androidPermissions.isNotEmpty()) {
-                    permissionLauncher.launch(androidPermissions.toTypedArray())
+                if (ipPermissions.isNotEmpty()) {
+                    PermissionHelper.checkPermission(
+                        this@MainActivity,
+                        ipPermissions,
+                        "H5页面需要相机或麦克风权限，用于拍照或录制语音。",
+                        "权限已被拒绝，请在设置中手动开启相关权限。",
+                        object : RequestCallback {
+                            override fun onGranted() {
+                                pendingPermissionRequest?.grant(pendingPermissionRequest?.resources)
+                                pendingPermissionRequest = null
+                            }
+
+                            override fun onDenied() {
+                                pendingPermissionRequest?.deny()
+                                pendingPermissionRequest = null
+                                Toast.makeText(this@MainActivity, "权限获取失败，功能无法使用", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                 } else {
                     request.grant(request.resources)
+                    pendingPermissionRequest = null
                 }
             }
         }
