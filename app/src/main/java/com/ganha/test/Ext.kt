@@ -42,8 +42,8 @@ fun ComponentActivity.setStatusBarTextColor(isLightBackground: Boolean) {
 fun Context.showTipsDialog(
     title: String,
     content: String,
-    cancelText: String = "取消",
-    confirmText: String = "确定",
+    cancelText: String = getString(R.string.cancel),
+    confirmText: String = getString(R.string.confirm),
     onCancelListener: (() -> Unit)? = null,
     onConfirmListener: (() -> Unit)? = null
 ): MyCustomTipsDialog {

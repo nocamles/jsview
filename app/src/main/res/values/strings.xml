@@ -1,4 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">js-view</string>
     <string name="quit_tips">再按一次退出</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确定</string>
+    <string name="save">保存</string>
+    <string name="tips">提示</string>
+    <string name="tips_content">提示内容</string>
+    <string name="downloading_please_wait">任务正在下载中，请稍后...</string>
+    <string name="permission_storage_download_reason">下载文件需要授权存储权限。</string>
+    <string name="permission_storage_setting_reason">存储权限,请在设置中开启相机权限</string>
+    <string name="permission_denied">权限获取失败</string>
+    <string name="permission_camera_mic_reason">H5页面需要相机或麦克风权限，用于拍照或录制语音。</string>
+    <string name="permission_camera_mic_setting_reason">权限已被拒绝，请在设置中手动开启相关权限。</string>
+    <string name="permission_denied_function_disabled">权限获取失败，功能无法使用</string>
+    <string name="download_canceled">已取消下载</string>
+    <string name="download_task_create_failed">创建任务失败</string>
+    <string name="download_success_path">下载成功！\n位置: %1$s</string>
+    <string name="download_failed_or_error">下载失败或文件错误</string>
+    <string name="save_image_to_gallery_prompt">是否保存图片到相册？</string>
+    <string name="permission_storage_save_image_reason">保存图片需要授权存储权限，用于将图片写入到相册。</string>
+    <string name="permission_storage_save_image_setting_reason">存储权限缺失，请在设置中开启存储权限</string>
+    <string name="permission_denied_cannot_save_image">权限获取失败，无法保存图片</string>
+    <string name="image_decode_failed">图片解码失败</string>
+    <string name="save_failed_reason">保存失败: %1$s</string>
+    <string name="image_saved_successfully">图片已成功保存到相册</string>
+    <string name="save_image_failed">保存图片失败</string>
+    <string name="permission_request">权限申请</string>
+    <string name="go_to_authorize">去授权</string>
+    <string name="permission_tips">权限提示</string>
+    <string name="reauthorize">重新授权</string>
+    <string name="go_to_settings">去设置</string>
+    <string name="downloading_file">正在下载文件...</string>
 </resources>

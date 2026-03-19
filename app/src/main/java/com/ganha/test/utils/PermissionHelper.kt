@@ -6,6 +6,7 @@ import com.hjq.permissions.XXPermissions
 import androidx.appcompat.app.AlertDialog
 import com.hjq.permissions.permission.base.IPermission
 import com.ganha.test.showTipsDialog
+import com.ganha.test.R
 
 /**
  * 权限请求结果回调
@@ -47,10 +48,10 @@ object PermissionHelper {
 
         // 2. 弹窗提示用户权限说明，确认后发起权限请求
         activity.showTipsDialog(
-            title = "权限申请",
+            title = activity.getString(R.string.permission_request),
             content = explainReason,
-            cancelText = "取消",
-            confirmText = "去授权",
+            cancelText = activity.getString(R.string.cancel),
+            confirmText = activity.getString(R.string.go_to_authorize),
             onCancelListener = {
                 // 用户拒绝弹窗，回调失败
                 callBack.onDenied()
@@ -103,10 +104,10 @@ object PermissionHelper {
         callBack: RequestCallback
     ) {
         AlertDialog.Builder(activity)
-            .setTitle("权限提示")
+            .setTitle(R.string.permission_tips)
             .setMessage(explainReason)
             .setCancelable(false)
-            .setPositiveButton("重新授权") { dialog, _ ->
+            .setPositiveButton(R.string.reauthorize) { dialog, _ ->
                 dialog.dismiss()
                 checkPermission(
                     activity,
@@ -116,7 +117,7 @@ object PermissionHelper {
                     callBack
                 )
             }
-            .setNegativeButton("取消") { dialog, _ ->
+            .setNegativeButton(R.string.cancel) { dialog, _ ->
                 dialog.dismiss()
                 callBack.onDenied()
             }
@@ -133,15 +134,15 @@ object PermissionHelper {
         callBack: RequestCallback
     ) {
         AlertDialog.Builder(activity)
-            .setTitle("权限提示")
+            .setTitle(R.string.permission_tips)
             .setMessage(forwardtoSettingReason)
             .setCancelable(false)
-            .setPositiveButton("去设置") { dialog, _ ->
+            .setPositiveButton(R.string.go_to_settings) { dialog, _ ->
                 dialog.dismiss()
                 XXPermissions.startPermissionActivity(activity, permissions)
                 callBack.onDenied()
             }
-            .setNegativeButton("取消") { dialog, _ ->
+            .setNegativeButton(R.string.cancel) { dialog, _ ->
                 dialog.dismiss()
                 callBack.onDenied()
             }

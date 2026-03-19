@@ -219,7 +219,7 @@ class MainActivity : AppCompatActivity() {
             if (isDownloading) {
                 Toast.makeText(
                     this@MainActivity,
-                    "任务正在下载中，请稍后...",
+                    getString(R.string.downloading_please_wait),
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setDownloadListener
@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 PermissionHelper.checkPermission(
                     this@MainActivity, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
-                    "下载文件需要授权存储权限。", "存储权限,请在设置中开启相机权限",
+                    getString(R.string.permission_storage_download_reason), getString(R.string.permission_storage_setting_reason),
                     object : RequestCallback {
                         override fun onGranted() {
                             startDownloadTask(url, userAgent, contentDisposition, mimetype)
@@ -236,7 +236,7 @@ class MainActivity : AppCompatActivity() {
                         override fun onDenied() {
                             Toast.makeText(
                                 this@MainActivity,
-                                "权限获取失败",
+                                getString(R.string.permission_denied),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -330,8 +330,8 @@ class MainActivity : AppCompatActivity() {
                     PermissionHelper.checkPermission(
                         this@MainActivity,
                         ipPermissions,
-                        "H5页面需要相机或麦克风权限，用于拍照或录制语音。",
-                        "权限已被拒绝，请在设置中手动开启相关权限。",
+                        getString(R.string.permission_camera_mic_reason),
+                        getString(R.string.permission_camera_mic_setting_reason),
                         object : RequestCallback {
                             override fun onGranted() {
                                 pendingPermissionRequest?.grant(pendingPermissionRequest?.resources)
@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity() {
                             override fun onDenied() {
                                 pendingPermissionRequest?.deny()
                                 pendingPermissionRequest = null
-                                Toast.makeText(this@MainActivity, "权限获取失败，功能无法使用", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, getString(R.string.permission_denied_function_disabled), Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -479,7 +479,7 @@ class MainActivity : AppCompatActivity() {
                 downloadManager.remove(downloadId) // 移除下载任务
                 isDownloading = false
                 customDialog?.dismiss()
-                Toast.makeText(this, "已取消下载", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.download_canceled), Toast.LENGTH_SHORT).show()
             }
 
             observeDownloadProgress(downloadManager, downloadId, fileName)
@@ -487,7 +487,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             isDownloading = false
             customDialog?.dismiss()
-            Toast.makeText(this, "创建任务失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.download_task_create_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -558,14 +558,14 @@ class MainActivity : AppCompatActivity() {
                         val path = "${Environment.DIRECTORY_DOWNLOADS}/$fileName"
                         Toast.makeText(
                             this@MainActivity,
-                            "下载成功！\n位置: $path",
+                            getString(R.string.download_success_path, path),
                             Toast.LENGTH_LONG
                         ).show()
                     } else {
                         if (finishDownload) {
                             Toast.makeText(
                                 this@MainActivity,
-                                "下载失败或文件错误",
+                                getString(R.string.download_failed_or_error),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -650,12 +650,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSaveImageDialog(imageUrl: String) {
         AlertDialog.Builder(this)
-            .setTitle("提示")
-            .setMessage("是否保存图片到相册？")
-            .setPositiveButton("保存") { _, _ ->
+            .setTitle(R.string.tips)
+            .setMessage(R.string.save_image_to_gallery_prompt)
+            .setPositiveButton(R.string.save) { _, _ ->
                 checkPermissionAndSaveImage(imageUrl)
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -663,14 +663,14 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             PermissionHelper.checkPermission(
                 this, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
-                "保存图片需要授权存储权限，用于将图片写入到相册。", "存储权限缺失，请在设置中开启存储权限",
+                getString(R.string.permission_storage_save_image_reason), getString(R.string.permission_storage_save_image_setting_reason),
                 object : RequestCallback {
                     override fun onGranted() {
                         performSaveImage(imageUrl)
                     }
 
                     override fun onDenied() {
-                        Toast.makeText(this@MainActivity, "权限获取失败，无法保存图片", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, getString(R.string.permission_denied_cannot_save_image), Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -701,13 +701,13 @@ class MainActivity : AppCompatActivity() {
                     saveBitmapToGallery(bitmap)
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "图片解码失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, getString(R.string.image_decode_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.save_failed_reason, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -745,9 +745,9 @@ class MainActivity : AppCompatActivity() {
 
         withContext(Dispatchers.Main) {
             if (isSuccess) {
-                Toast.makeText(this@MainActivity, "图片已成功保存到相册", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, getString(R.string.image_saved_successfully), Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this@MainActivity, "保存图片失败", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, getString(R.string.save_image_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -13,8 +13,8 @@ class MyCustomTipsDialog(
     context: Context,
     private val title: String,
     private val content: String,
-    private val cancelText: String = "取消",
-    private val confirmText: String = "确定",
+    private val cancelText: String,
+    private val confirmText: String,
     private val onCancelListener: (() -> Unit)? = null,
     private val onConfirmListener: (() -> Unit)? = null
 ) : Dialog(context, androidx.appcompat.R.style.Theme_AppCompat_Dialog) {
