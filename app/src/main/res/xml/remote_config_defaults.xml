@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- START xml_defaults -->
+<defaultsMap>
+    <entry>
+        <key>main_url_text</key>
+        <value>abc</value>
+    </entry>
+    <entry>
+        <key>main_url_ganha</key>
+        <value>www.baidu.com</value>
+    </entry>
+</defaultsMap>
+    <!-- END xml_defaults -->

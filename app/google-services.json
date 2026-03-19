@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "437232948901",
+    "project_id": "test789-a7d63",
+    "storage_bucket": "test789-a7d63.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437232948901:android:4455b38ec20063af8d1f4c",
+        "android_client_info": {
+          "package_name": "com.gamego.ganha"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkdO6aDhrQGhCfRClVXn_1BSJVl6jlj94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437232948901:android:bfe56cdbaec98e308d1f4c",
+        "android_client_info": {
+          "package_name": "com.textcom.text"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkdO6aDhrQGhCfRClVXn_1BSJVl6jlj94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
