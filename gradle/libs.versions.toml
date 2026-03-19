@@ -29,6 +29,8 @@ lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmode
 lifecycle-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" }
 xxpermission = { group = "com.github.getActivity", name = "XXPermissions", version.ref = "xxpermission" }
 devicecompat = { group = "com.github.getActivity", name = "DeviceCompat", version.ref = "devicecompat" }
+play-services-ads-identifier = { group = "com.google.android.gms", name = "play-services-ads-identifier", version = "18.2.0" }
+
 
 
 [plugins]

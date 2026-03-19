@@ -50,4 +50,6 @@ dependencies {
     implementation(libs.devicecompat)
     //json解析
     implementation(libs.gson)
+    //广告ID获取
+    implementation(libs.play.services.ads.identifier)
 }

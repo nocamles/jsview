@@ -72,7 +72,7 @@
         <div class="img-container">
             <img id="testImage" src="https://picsum.photos/300/300" alt="网络测试图">
         </div>
-        <button onclick="callNative('saveImage', document.getElementById('testImage').src)">通过 JS 保存网络图片</button>
+        <button onclick="callNative('saveImageToGallery', document.getElementById('testImage').src)">通过 JS 保存网络图片</button>
     </div>
 
     <div class="section">
@@ -88,6 +88,13 @@
         <button onclick="requestMicrophone()">申请麦克风权限</button>
         <video id="videoElement" autoplay playsinline style="display:none; width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; background: #000;"></video>
         <audio id="audioElement" autoplay controls style="display:none; width: 100%; margin-top: 10px;"></audio>
+    </div>
+
+    <div class="section">
+        <h3>6. 设备信息获取测试</h3>
+        <p>点击下方按钮，获取 Native 提供的设备指纹、安全环境和网络信息：</p>
+        <button class="success" onclick="callNative('deviceInfo')">获取设备信息</button>
+        <pre id="deviceInfoResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
     </div>
 
     <script>
@@ -153,7 +160,7 @@
                     document.body.style.backgroundColor = 'black';
                     document.body.style.color = 'white';
                 }
-            } else if (method === 'saveImage') {
+            } else if (method === 'saveImageToGallery') {
                 paramObj = { url: message };
             }
 
@@ -190,6 +197,20 @@
                 fileSizeInfo.textContent = `当前图片大小: ${fileSizeKB} KB`;
                 fileSizeInfo.style.display = 'block';
             }
+        }
+
+        function deviceInfo_callback(jsonStr) {
+            console.log("收到设备信息返回:", jsonStr);
+            const resultElement = document.getElementById('deviceInfoResult');
+            try {
+                // 尝试美化 JSON 字符串
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                // 解析失败直接显示字符串
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
         }
     </script>
 </body>

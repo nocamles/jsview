@@ -77,7 +77,11 @@ import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
 import android.webkit.ValueCallback
 import android.app.Activity
+import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
 import com.ganha.test.bean.JsBean.Companion.js_saveImage
+import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
+import com.ganha.test.utils.DeviceIdUtil
+import com.ganha.test.utils.DeviceInfoHelper
 
 class MainActivity : AppCompatActivity() {
 
@@ -148,6 +152,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
@@ -167,7 +172,6 @@ class MainActivity : AppCompatActivity() {
     private var navBarHeight: Int = 0
 
     private val MIN_DISPLAY_TIME = 1500L
-
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -226,8 +230,10 @@ class MainActivity : AppCompatActivity() {
             }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 PermissionHelper.checkPermission(
-                    this@MainActivity, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
-                    getString(R.string.permission_storage_download_reason), getString(R.string.permission_storage_setting_reason),
+                    this@MainActivity,
+                    arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
+                    getString(R.string.permission_storage_download_reason),
+                    getString(R.string.permission_storage_setting_reason),
                     object : RequestCallback {
                         override fun onGranted() {
                             startDownloadTask(url, userAgent, contentDisposition, mimetype)
@@ -284,7 +290,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 android.util.Log.e("WebViewTest", "主页面已加载完毕进入 onPageFinished: $url")
 
-                if(splashView.isVisible) {
+                if (splashView.isVisible) {
                     sendEmptyJsNative("finishAnimationFast", splash_webview)
 
                     splashView.postDelayed({
@@ -305,7 +311,7 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 this@MainActivity.filePathCallback?.onReceiveValue(null)
                 this@MainActivity.filePathCallback = filePathCallback
-                
+
                 val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "image/*"
@@ -341,7 +347,11 @@ class MainActivity : AppCompatActivity() {
                             override fun onDenied() {
                                 pendingPermissionRequest?.deny()
                                 pendingPermissionRequest = null
-                                Toast.makeText(this@MainActivity, getString(R.string.permission_denied_function_disabled), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.permission_denied_function_disabled),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     )
@@ -356,7 +366,8 @@ class MainActivity : AppCompatActivity() {
         webView.setOnLongClickListener {
             val hitTestResult = webView.hitTestResult
             if (hitTestResult.type == WebView.HitTestResult.IMAGE_TYPE ||
-                hitTestResult.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                hitTestResult.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+            ) {
                 val imageUrl = hitTestResult.extra
                 if (!imageUrl.isNullOrEmpty()) {
                     showSaveImageDialog(imageUrl)
@@ -420,7 +431,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    js_openUrlExternally ->{
+                    js_openUrlExternally -> {
                         var jsExterUrlBean =
                             Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
                         try {
@@ -431,13 +442,13 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    js_statusBarLight ->{
+                    js_statusBarLight -> {
                         var statusBarBean =
                             Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
                         setStatusBarTextColor(statusBarBean.isLight)
                     }
 
-                    js_saveImage -> {
+                    js_saveImageToGallery -> {
                         try {
                             var jsExterUrlBean =
                                 Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
@@ -446,6 +457,33 @@ class MainActivity : AppCompatActivity() {
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
+                        }
+                    }
+
+                    js_deviceInfo -> {
+                        lifecycleScope.launch {
+                            val isEmulator = DeviceInfoHelper.isEmulator()
+                            val isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
+                            val isRooted = DeviceInfoHelper.isRooted()
+                            val isUsbDebuggingOrDevMode =
+                                DeviceInfoHelper.isUsbDebuggingOrDevMode(this@MainActivity)
+                            val hasSimCard = DeviceInfoHelper.hasSimCard(this@MainActivity)
+                            val simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
+                            val deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
+
+                            val appInfo = com.ganha.test.bean.AppinfoBean(
+                                isEmulator = isEmulator,
+                                isVpnOrProxy = isVpnOrProxy,
+                                isRooted = isRooted,
+                                isUsbDebuggingOrDevMode = isUsbDebuggingOrDevMode,
+                                hasSimCard = hasSimCard,
+                                simOperator = simOperator,
+                                deviceId = deviceId
+                            )
+                            val jsonStr = Gson().toJson(appInfo)
+                            withContext(Dispatchers.Main) {
+                                sendJsNative(jsMessage.callback, webView, jsonStr)
+                            }
                         }
                     }
                 }
@@ -479,7 +517,8 @@ class MainActivity : AppCompatActivity() {
                 downloadManager.remove(downloadId) // 移除下载任务
                 isDownloading = false
                 customDialog?.dismiss()
-                Toast.makeText(this, getString(R.string.download_canceled), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.download_canceled), Toast.LENGTH_SHORT)
+                    .show()
             }
 
             observeDownloadProgress(downloadManager, downloadId, fileName)
@@ -487,7 +526,11 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             isDownloading = false
             customDialog?.dismiss()
-            Toast.makeText(this, getString(R.string.download_task_create_failed), Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                getString(R.string.download_task_create_failed),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -662,15 +705,21 @@ class MainActivity : AppCompatActivity() {
     private fun checkPermissionAndSaveImage(imageUrl: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             PermissionHelper.checkPermission(
-                this, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
-                getString(R.string.permission_storage_save_image_reason), getString(R.string.permission_storage_save_image_setting_reason),
+                this,
+                arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
+                getString(R.string.permission_storage_save_image_reason),
+                getString(R.string.permission_storage_save_image_setting_reason),
                 object : RequestCallback {
                     override fun onGranted() {
                         performSaveImage(imageUrl)
                     }
 
                     override fun onDenied() {
-                        Toast.makeText(this@MainActivity, getString(R.string.permission_denied_cannot_save_image), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.permission_denied_cannot_save_image),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             )
@@ -701,13 +750,21 @@ class MainActivity : AppCompatActivity() {
                     saveBitmapToGallery(bitmap)
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, getString(R.string.image_decode_failed), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.image_decode_failed),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, getString(R.string.save_failed_reason, e.message), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.save_failed_reason, e.message),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -739,15 +796,28 @@ class MainActivity : AppCompatActivity() {
             }
             if (isSuccess) {
                 savedPath = file.absolutePath
-                MediaScannerConnection.scanFile(this@MainActivity, arrayOf(savedPath), arrayOf("image/jpeg"), null)
+                MediaScannerConnection.scanFile(
+                    this@MainActivity,
+                    arrayOf(savedPath),
+                    arrayOf("image/jpeg"),
+                    null
+                )
             }
         }
 
         withContext(Dispatchers.Main) {
             if (isSuccess) {
-                Toast.makeText(this@MainActivity, getString(R.string.image_saved_successfully), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.image_saved_successfully),
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
-                Toast.makeText(this@MainActivity, getString(R.string.save_image_failed), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.save_image_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
