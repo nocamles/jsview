@@ -22,6 +22,7 @@ import android.webkit.URLUtil
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -180,10 +181,12 @@ class MainActivity : AppCompatActivity() {
     private var navBarHeight: Int = 0
 
     private val MIN_DISPLAY_TIME = 1500L
-
+    private lateinit var webViewLocalCache: com.ganha.test.utils.WebViewLocalCache
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        webViewLocalCache = com.ganha.test.utils.WebViewLocalCache(this)
 
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
@@ -262,6 +265,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                if (request != null && request.isForMainFrame) {
+                    return super.shouldInterceptRequest(view, request)
+                }
+                
+                request?.let {
+                    val localResponse = webViewLocalCache.interceptRequest(it)
+                    if (localResponse != null) {
+                        return localResponse
+                    }
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: WebResourceRequest?
