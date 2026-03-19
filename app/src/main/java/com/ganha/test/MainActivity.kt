@@ -73,7 +73,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import android.app.AlertDialog
+import com.ganha.test.utils.MyCustomTipsDialog
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -188,7 +188,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         webViewLocalCache = com.ganha.test.utils.WebViewLocalCache(this)
 
         enableEdgeToEdge()
@@ -203,6 +203,7 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            statusBarHeight = systemBars.top
             v.setPadding(0, 0, 0, systemBars.bottom)
             insets
         }
@@ -211,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         initWebView()
         setupBackPressed()
         splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
-        webView.loadUrl("https://www.baidu.com")
+        webView.loadUrl("file:///android_asset/myTest.html")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -275,7 +276,7 @@ class MainActivity : AppCompatActivity() {
                 if (request != null && request.isForMainFrame) {
                     return super.shouldInterceptRequest(view, request)
                 }
-                
+
                 request?.let {
                     val localResponse = webViewLocalCache.interceptRequest(it)
                     if (localResponse != null) {
@@ -289,7 +290,38 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                return super.shouldOverrideUrlLoading(view, request)
+                val url =
+                    request?.url?.toString() ?: return super.shouldOverrideUrlLoading(view, request)
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    return super.shouldOverrideUrlLoading(view, request)
+                }
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    this@MainActivity.startActivity(intent)
+                    return true
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    return true
+                }
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url == null) {
+                    return super.shouldOverrideUrlLoading(view, url as String?)
+                }
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    return super.shouldOverrideUrlLoading(view, url)
+                }
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    this@MainActivity.startActivity(intent)
+                    return true
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    return true
+                }
             }
 
             override fun onReceivedError(
@@ -299,6 +331,9 @@ class MainActivity : AppCompatActivity() {
             ) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
+                    if (error?.errorCode == WebViewClient.ERROR_UNSUPPORTED_SCHEME) {
+                        return
+                    }
                     failedUrl = request.url.toString()
                     showErrorView()
                 }
@@ -431,22 +466,34 @@ class MainActivity : AppCompatActivity() {
                 when (jsMessage.methods) {
                     js_appUpdate -> {
                         try {
-                            val appUpdateBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.AppUpdateBean::class.java)
+                            val appUpdateBean = Gson().fromJson(
+                                jsMessage.paramObj,
+                                AppUpdateBean::class.java
+                            )
                             if (appUpdateBean?.needUpdate == true && !appUpdateBean.updateUrl.isNullOrEmpty()) {
                                 runOnUiThread {
-                                    AlertDialog.Builder(this@MainActivity)
-                                        .setTitle(getString(R.string.tips) ?: "版本更新")
-                                        .setMessage("发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？")
-                                        .setPositiveButton(getString(R.string.save) ?: "立即更新") { _, _ ->
+                                    MyCustomTipsDialog(
+                                        this@MainActivity,
+                                        getString(R.string.tips) ?: "版本更新",
+                                        "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
+                                        getString(R.string.cancel) ?: "稍后提醒",
+                                        getString(R.string.save) ?: "立即更新",
+                                        onCancelListener = null,
+                                        onConfirmListener = {
+                                            //todo 临时处理跳转到浏览器下载.需要修改成downloadManager静默下载
                                             try {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(appUpdateBean.updateUrl))
+                                                val intent = Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    Uri.parse(appUpdateBean.updateUrl)
+                                                )
                                                 startActivity(intent)
                                             } catch (e: Exception) {
                                                 e.printStackTrace()
                                             }
                                         }
-                                        .setNegativeButton(getString(R.string.cancel) ?: "稍后提醒", null)
-                                        .show()
+                                    ).apply {
+                                        setCancelable(false)
+                                    }.show()
                                 }
                             }
                         } catch (e: Exception) {
@@ -486,13 +533,22 @@ class MainActivity : AppCompatActivity() {
 
                     js_copyToClipboard -> {
                         try {
-                            val copyBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.CopyBean::class.java)
+                            val copyBean = Gson().fromJson(
+                                jsMessage.paramObj,
+                                com.ganha.test.bean.CopyBean::class.java
+                            )
                             copyBean?.text?.let { textToCopy ->
-                                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                val clip = android.content.ClipData.newPlainText("label", textToCopy)
+                                val clipboard =
+                                    getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip =
+                                    android.content.ClipData.newPlainText("label", textToCopy)
                                 clipboard.setPrimaryClip(clip)
                                 runOnUiThread {
-                                    Toast.makeText(this@MainActivity, getString(R.string.copy_success), Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        getString(R.string.copy_success),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         } catch (e: Exception) {
@@ -502,17 +558,29 @@ class MainActivity : AppCompatActivity() {
 
                     js_shareTo -> {
                         try {
-                            val shareBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.ShareBean::class.java)
+                            val shareBean = Gson().fromJson(
+                                jsMessage.paramObj,
+                                com.ganha.test.bean.ShareBean::class.java
+                            )
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 val shareText = buildString {
-                                    if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append("\n")
-                                    if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append("\n")
+                                    if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append(
+                                        "\n"
+                                    )
+                                    if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append(
+                                        "\n"
+                                    )
                                     if (!shareBean?.url.isNullOrEmpty()) append(shareBean?.url)
                                 }.trim()
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                             }
-                            startActivity(Intent.createChooser(shareIntent, getString(R.string.share_to)))
+                            startActivity(
+                                Intent.createChooser(
+                                    shareIntent,
+                                    getString(R.string.share_to)
+                                )
+                            )
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -531,12 +599,20 @@ class MainActivity : AppCompatActivity() {
 
                     js_vibrate -> {
                         try {
-                            val vibrateBean = Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java) ?: VibrateBean()
+                            val vibrateBean =
+                                Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java)
+                                    ?: VibrateBean()
                             val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
                             if (vibrator.hasVibrator()) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    val amplitude = if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
-                                    vibrator.vibrate(VibrationEffect.createOneShot(vibrateBean.duration, amplitude))
+                                    val amplitude =
+                                        if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
+                                    vibrator.vibrate(
+                                        VibrationEffect.createOneShot(
+                                            vibrateBean.duration,
+                                            amplitude
+                                        )
+                                    )
                                 } else {
                                     @Suppress("DEPRECATION")
                                     vibrator.vibrate(vibrateBean.duration)
@@ -606,19 +682,14 @@ class MainActivity : AppCompatActivity() {
                                 deviceId = deviceId,
                                 versionCode = versionCode,
                                 versionName = versionName,
-                                packageName = packName
+                                packageName = packName,
+                                statusBarHeight = statusBarHeight.toH5Value(this@MainActivity)
                             )
                             val jsonStr = Gson().toJson(appInfo)
                             withContext(Dispatchers.Main) {
                                 sendJsNative(jsMessage.callback, webView, jsonStr)
                             }
                         }
-                    }
-
-                    js_appUpdate ->{
-                        var jsAppUpdateBean =
-                            Gson().fromJson(jsMessage.paramObj, AppUpdateBean::class.java)
-                        //todo 调用系统 downloadManager更新APK
                     }
                 }
             }
@@ -828,14 +899,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSaveImageDialog(imageUrl: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.tips)
-            .setMessage(R.string.save_image_to_gallery_prompt)
-            .setPositiveButton(R.string.save) { _, _ ->
+        MyCustomTipsDialog(
+            this,
+            getString(R.string.tips),
+            getString(R.string.save_image_to_gallery_prompt),
+            getString(R.string.cancel),
+            getString(R.string.save),
+            onCancelListener = null,
+            onConfirmListener = {
                 checkPermissionAndSaveImage(imageUrl)
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        ).show()
     }
 
     private fun checkPermissionAndSaveImage(imageUrl: String) {

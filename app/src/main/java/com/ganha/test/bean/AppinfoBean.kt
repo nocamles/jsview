@@ -12,4 +12,5 @@ data class AppinfoBean(
     val versionCode :Int = 0,
     val versionName :String = "",
     val packageName :String = "",
+    val statusBarHeight : String = "",
 )

@@ -3,7 +3,7 @@ package com.ganha.test.utils
 import androidx.appcompat.app.AppCompatActivity
 import com.hjq.permissions.OnPermissionCallback
 import com.hjq.permissions.XXPermissions
-import androidx.appcompat.app.AlertDialog
+import com.ganha.test.utils.MyCustomTipsDialog
 import com.hjq.permissions.permission.base.IPermission
 import com.ganha.test.showTipsDialog
 import com.ganha.test.R
@@ -103,12 +103,16 @@ object PermissionHelper {
         forwardtoSettingReason: String,
         callBack: RequestCallback
     ) {
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.permission_tips)
-            .setMessage(explainReason)
-            .setCancelable(false)
-            .setPositiveButton(R.string.reauthorize) { dialog, _ ->
-                dialog.dismiss()
+        MyCustomTipsDialog(
+            activity,
+            activity.getString(R.string.permission_tips),
+            explainReason,
+            activity.getString(R.string.cancel),
+            activity.getString(R.string.reauthorize),
+            onCancelListener = {
+                callBack.onDenied()
+            },
+            onConfirmListener = {
                 checkPermission(
                     activity,
                     permissions,
@@ -117,11 +121,9 @@ object PermissionHelper {
                     callBack
                 )
             }
-            .setNegativeButton(R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-                callBack.onDenied()
-            }
-            .show()
+        ).apply {
+            setCancelable(false)
+        }.show()
     }
 
     /**
@@ -133,19 +135,21 @@ object PermissionHelper {
         forwardtoSettingReason: String,
         callBack: RequestCallback
     ) {
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.permission_tips)
-            .setMessage(forwardtoSettingReason)
-            .setCancelable(false)
-            .setPositiveButton(R.string.go_to_settings) { dialog, _ ->
-                dialog.dismiss()
+        MyCustomTipsDialog(
+            activity,
+            activity.getString(R.string.permission_tips),
+            forwardtoSettingReason,
+            activity.getString(R.string.cancel),
+            activity.getString(R.string.go_to_settings),
+            onCancelListener = {
+                callBack.onDenied()
+            },
+            onConfirmListener = {
                 XXPermissions.startPermissionActivity(activity, permissions)
                 callBack.onDenied()
             }
-            .setNegativeButton(R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
-                callBack.onDenied()
-            }
-            .show()
+        ).apply {
+            setCancelable(false)
+        }.show()
     }
 }

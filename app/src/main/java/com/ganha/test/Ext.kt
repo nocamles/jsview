@@ -7,6 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import com.ganha.test.utils.MyCustomTipsDialog
+import java.util.Locale
 
 /**
  *@auth: Hank
@@ -34,6 +35,13 @@ fun ComponentActivity.setStatusBarTextColor(isLightBackground: Boolean) {
 
     val insetsController = WindowCompat.getInsetsController(window, window.decorView)
     insetsController.isAppearanceLightStatusBars = isLightBackground
+}
+
+fun Int.toH5Value(context: Context): String {
+    val density = context.resources.displayMetrics.density
+    val result = this.toFloat() / density
+
+    return String.format(Locale.US, "%.1f", result)
 }
 
 /**
