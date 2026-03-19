@@ -127,6 +127,12 @@
         <pre id="lifecycleResult" style="white-space: pre-wrap; word-wrap: break-word;">当前状态: 初始化</pre>
     </div>
 
+    <div class="section">
+        <h3>12. 版本更新通知测试</h3>
+        <p>点击下方按钮，模拟 H5 发现新版本主动告知原生端：</p>
+        <button class="success" onclick="callNative('appUpdate', {needUpdate: true, updateUrl: 'https://www.example.com/update.apk', versionCode: 2, versionName: '1.0.1'})">通知原生版本更新</button>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -194,7 +200,7 @@
                 paramObj = { url: message };
             } else if (method === 'vibrate') {
                 paramObj = message || { amplitude: 255, duration: 50 };
-            } else if (method === 'copyToClipboard' || method === 'shareTo') {
+            } else if (method === 'copyToClipboard' || method === 'shareTo' || method === 'appUpdate') {
                 paramObj = message;
             }
 

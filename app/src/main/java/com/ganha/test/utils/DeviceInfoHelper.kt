@@ -124,4 +124,17 @@ object DeviceInfoHelper {
             ""
         }
     }
+
+    /**
+     * 6. SIM卡识别（国家/地区代码）
+     */
+    fun getSimCountry(context: Context): String {
+        val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        return if (telephonyManager.simState == TelephonyManager.SIM_STATE_READY) {
+            telephonyManager.simCountryIso ?: ""
+        } else {
+            ""
+        }
+    }
+
 }

@@ -6,6 +6,10 @@ data class AppinfoBean(
     val isRooted: Boolean = false,
     val isUsbDebuggingOrDevMode: Boolean = false,
     val hasSimCard: Boolean = false,
+    val sim_country: String = "",
     val simOperator: String = "",
-    val deviceId: String = ""
+    val deviceId: String = "",
+    val versionCode :Int = 0,
+    val versionName :String = "",
+    val packageName :String = "",
 )

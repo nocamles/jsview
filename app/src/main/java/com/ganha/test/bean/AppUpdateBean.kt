@@ -1,0 +1,8 @@
+package com.ganha.test.bean
+
+data class AppUpdateBean(
+    val needUpdate: Boolean = false,
+    val updateUrl: String = "",
+    val versionCode: Int = 0,
+    val versionName: String = ""
+)

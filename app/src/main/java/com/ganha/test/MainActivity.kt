@@ -48,6 +48,7 @@ import com.ganha.test.bean.JsBean.Companion.js_shareTo
 import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBean.Companion.js_goBack
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
+import com.ganha.test.bean.JsBean.Companion.js_appUpdate
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
 import com.ganha.test.bean.VibrateBean
@@ -87,6 +88,8 @@ import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
 import android.webkit.ValueCallback
 import android.app.Activity
+import com.ganha.test.bean.AppUpdateBean
+import com.ganha.test.bean.AppinfoBean
 import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
 import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
 import com.ganha.test.utils.DeviceIdUtil
@@ -208,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         initWebView()
         setupBackPressed()
         splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
-        webView.loadUrl("file:///android_asset/myTest.html")
+        webView.loadUrl("https://www.baidu.com")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -286,19 +289,6 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                val url = request?.url ?: return false
-                val scheme = url.scheme
-                if (scheme == "http" || scheme == "https") {
-                    return false
-                }
-                // 支持 Deep Linking (URL Scheme 及 App Links)
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, url)
-                    startActivity(intent)
-                    return true
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
                 return super.shouldOverrideUrlLoading(view, request)
             }
 
@@ -439,6 +429,31 @@ class MainActivity : AppCompatActivity() {
                 var jsMessage =
                     Gson().fromJson(message, JsBeanRequest::class.java)
                 when (jsMessage.methods) {
+                    js_appUpdate -> {
+                        try {
+                            val appUpdateBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.AppUpdateBean::class.java)
+                            if (appUpdateBean?.needUpdate == true && !appUpdateBean.updateUrl.isNullOrEmpty()) {
+                                runOnUiThread {
+                                    AlertDialog.Builder(this@MainActivity)
+                                        .setTitle(getString(R.string.tips) ?: "版本更新")
+                                        .setMessage("发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？")
+                                        .setPositiveButton(getString(R.string.save) ?: "立即更新") { _, _ ->
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(appUpdateBean.updateUrl))
+                                                startActivity(intent)
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                        }
+                                        .setNegativeButton(getString(R.string.cancel) ?: "稍后提醒", null)
+                                        .show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
                     js_goBack -> {
                         runOnUiThread {
                             if (webView.canGoBack()) {
@@ -561,20 +576,49 @@ class MainActivity : AppCompatActivity() {
                             val simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
                             val deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
 
-                            val appInfo = com.ganha.test.bean.AppinfoBean(
+                            val simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
+
+                            var versionCode = 0
+                            var versionName = ""
+                            var packName = ""
+                            try {
+                                val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                                versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                    packageInfo.longVersionCode.toInt()
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    packageInfo.versionCode
+                                }
+                                versionName = packageInfo.versionName ?: ""
+                                packName = packageName
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+
+                            val appInfo = AppinfoBean(
                                 isEmulator = isEmulator,
                                 isVpnOrProxy = isVpnOrProxy,
                                 isRooted = isRooted,
                                 isUsbDebuggingOrDevMode = isUsbDebuggingOrDevMode,
                                 hasSimCard = hasSimCard,
+                                sim_country = simCountry,
                                 simOperator = simOperator,
-                                deviceId = deviceId
+                                deviceId = deviceId,
+                                versionCode = versionCode,
+                                versionName = versionName,
+                                packageName = packName
                             )
                             val jsonStr = Gson().toJson(appInfo)
                             withContext(Dispatchers.Main) {
                                 sendJsNative(jsMessage.callback, webView, jsonStr)
                             }
                         }
+                    }
+
+                    js_appUpdate ->{
+                        var jsAppUpdateBean =
+                            Gson().fromJson(jsMessage.paramObj, AppUpdateBean::class.java)
+                        //todo 调用系统 downloadManager更新APK
                     }
                 }
             }
