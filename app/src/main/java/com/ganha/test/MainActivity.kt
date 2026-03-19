@@ -62,10 +62,92 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import android.app.AlertDialog
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.provider.MediaStore
+import android.util.Base64
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import android.media.MediaScannerConnection
+import java.io.File
+import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
+import android.webkit.ValueCallback
+import android.app.Activity
+import com.ganha.test.bean.JsBean.Companion.js_saveImage
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            val uri = data?.data
+            if (uri != null) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val compressedUri = compressImageIfNeeded(uri)
+                    withContext(Dispatchers.Main) {
+                        filePathCallback?.onReceiveValue(arrayOf(compressedUri))
+                        filePathCallback = null
+                    }
+                }
+                return@registerForActivityResult
+            } else {
+                filePathCallback?.onReceiveValue(null)
+            }
+        } else {
+            filePathCallback?.onReceiveValue(null)
+        }
+        filePathCallback = null
+    }
+
+    private suspend fun compressImageIfNeeded(uri: Uri): Uri {
+        return withContext(Dispatchers.IO) {
+            try {
+                var fileSize = 0L
+                contentResolver.openFileDescriptor(uri, "r")?.use {
+                    fileSize = it.statSize
+                }
+                if (fileSize <= 800 * 1024) {
+                    return@withContext uri
+                }
+
+                val inputStream = contentResolver.openInputStream(uri)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap == null) return@withContext uri
+
+                var quality = 90
+                var outputStream = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+
+                while (outputStream.toByteArray().size > 800 * 1024 && quality > 10) {
+                    quality -= 10
+                    outputStream.reset()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+                }
+
+                val tempFile = File(cacheDir, "compressed_${System.currentTimeMillis()}.jpg")
+                val fileOutputStream = FileOutputStream(tempFile)
+                fileOutputStream.write(outputStream.toByteArray())
+                fileOutputStream.flush()
+                fileOutputStream.close()
+                outputStream.close()
+
+                return@withContext Uri.fromFile(tempFile)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@withContext uri
+            }
+        }
+    }
     private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
@@ -133,6 +215,7 @@ class MainActivity : AppCompatActivity() {
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        settings.allowFileAccess = true
 
         // 强制 setTextZoom(100) 忽略系统字体大小
         settings.textZoom = 100
@@ -228,6 +311,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                this@MainActivity.filePathCallback?.onReceiveValue(null)
+                this@MainActivity.filePathCallback = filePathCallback
+                
+                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                }
+                fileChooserLauncher.launch(intent)
+                return true
+            }
+
             // 拦截 H5 相机/麦克风权限，自动映射系统原生权限
             override fun onPermissionRequest(request: PermissionRequest?) {
                 if (request == null) return
@@ -246,6 +345,20 @@ class MainActivity : AppCompatActivity() {
                     request.grant(request.resources)
                 }
             }
+        }
+
+        // 添加长按监听，拦截图片保存
+        webView.setOnLongClickListener {
+            val hitTestResult = webView.hitTestResult
+            if (hitTestResult.type == WebView.HitTestResult.IMAGE_TYPE ||
+                hitTestResult.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                val imageUrl = hitTestResult.extra
+                if (!imageUrl.isNullOrEmpty()) {
+                    showSaveImageDialog(imageUrl)
+                    return@setOnLongClickListener true
+                }
+            }
+            false
         }
 
         webView.addJavascriptInterface(JsBean(viewModel), "android")
@@ -317,6 +430,18 @@ class MainActivity : AppCompatActivity() {
                         var statusBarBean =
                             Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
                         setStatusBarTextColor(statusBarBean.isLight)
+                    }
+
+                    js_saveImage -> {
+                        try {
+                            var jsExterUrlBean =
+                                Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
+                            runOnUiThread {
+                                checkPermissionAndSaveImage(jsExterUrlBean.url)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
             }
@@ -515,6 +640,110 @@ class MainActivity : AppCompatActivity() {
             splash_webview?.clearView() // 针对老版本API
             splash_webview?.removeAllViews()
             splash_webview?.loadUrl("about:blank")
+        }
+    }
+
+    private fun showSaveImageDialog(imageUrl: String) {
+        AlertDialog.Builder(this)
+            .setTitle("提示")
+            .setMessage("是否保存图片到相册？")
+            .setPositiveButton("保存") { _, _ ->
+                checkPermissionAndSaveImage(imageUrl)
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun checkPermissionAndSaveImage(imageUrl: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            PermissionHelper.checkPermission(
+                this, arrayListOf(PermissionLists.getWriteExternalStoragePermission()),
+                "保存图片需要授权存储权限，用于将图片写入到相册。", "存储权限缺失，请在设置中开启存储权限",
+                object : RequestCallback {
+                    override fun onGranted() {
+                        performSaveImage(imageUrl)
+                    }
+
+                    override fun onDenied() {
+                        Toast.makeText(this@MainActivity, "权限获取失败，无法保存图片", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            )
+        } else {
+            // Android 10+ 不需要存储权限即可向公共图库插入图片
+            performSaveImage(imageUrl)
+        }
+    }
+
+    private fun performSaveImage(imageUrl: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val bitmap = if (imageUrl.startsWith("data:image")) {
+                    // 处理 Base64 格式的图片
+                    val base64Data = imageUrl.substringAfter(",")
+                    val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                } else {
+                    // 处理网络 URL 格式的图片
+                    val url = URL(imageUrl)
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.doInput = true
+                    connection.connect()
+                    BitmapFactory.decodeStream(connection.inputStream)
+                }
+
+                if (bitmap != null) {
+                    saveBitmapToGallery(bitmap)
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "图片解码失败", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private suspend fun saveBitmapToGallery(bitmap: Bitmap) {
+        val fileName = "IMG_${System.currentTimeMillis()}.jpg"
+        var isSuccess = false
+        var savedPath = ""
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            }
+            val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            if (uri != null) {
+                contentResolver.openOutputStream(uri)?.use { os ->
+                    isSuccess = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+                }
+            }
+        } else {
+            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            if (!dir.exists()) dir.mkdirs()
+            val file = File(dir, fileName)
+            FileOutputStream(file).use { os ->
+                isSuccess = bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+            }
+            if (isSuccess) {
+                savedPath = file.absolutePath
+                MediaScannerConnection.scanFile(this@MainActivity, arrayOf(savedPath), arrayOf("image/jpeg"), null)
+            }
+        }
+
+        withContext(Dispatchers.Main) {
+            if (isSuccess) {
+                Toast.makeText(this@MainActivity, "图片已成功保存到相册", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@MainActivity, "保存图片失败", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

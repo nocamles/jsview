@@ -22,6 +22,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_refresh = "refreshPage"
         const val js_statusBarLight = "statusBarLight"
         const val js_openUrlExternally = "openUrlExternally"
+        const val js_saveImage = "saveImage"
 
 
         fun sendJsNative(jsName: String, webView: WebView?, jsonParams: String) {

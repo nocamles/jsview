@@ -8,7 +8,6 @@
         body {
             padding: 20px;
             font-family: Arial, sans-serif;
-            /* 增加颜色切换的过渡动画，让变化更平滑 */
             transition: background-color 0.3s, color 0.3s;
         }
         button {
@@ -21,58 +20,120 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
+        }
+        button.success {
+            background: #4CAF50;
         }
         pre {
             background: #f5f5f5;
             padding: 10px;
             border-radius: 5px;
-            color: #333; /* 固定 pre 的文字颜色防止看不清 */
+            color: #333;
+        }
+        .section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .img-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
-<h3>JavaScript 调用 Native 调试</h3>
+    <h3>1. JS 调用 Native 基础测试</h3>
+    <button onclick="callNative('statusBarLight')">状态栏颜色修改</button>
 
-<button onclick="callNative('statusBarLight')">1. 状态栏颜色修改</button>
+    <div class="section">
+        <h3>2. 图片上传测试 (唤起相册)</h3>
+        <p>点击下方选择文件，测试 WebView 的 <code>onShowFileChooser</code> 回调是否正常工作：</p>
+        <input type="file" accept="image/*" onchange="previewImage(event)">
+        <div class="img-container">
+            <img id="previewImg" src="" alt="预览图" style="display: none; max-height: 200px;"/>
+            <p id="fileSizeInfo" style="display: none; color: #666; font-size: 14px; margin-top: 8px;"></p>
+        </div>
+    </div>
 
-<script>
-    let isLightState = true;
+    <div class="section">
+        <h3>3. 图片保存测试 (长按 & 按钮)</h3>
+        <p>1. <b>长按</b>下方图片，测试原生自动拦截弹窗保存。<br>2. <b>点击按钮</b>，测试通过 JSBridge 指令保存网络图或 Base64 图。</p>
+        
+        <div class="img-container">
+            <img id="testImage" src="https://picsum.photos/300/300" alt="网络测试图">
+        </div>
+        <button onclick="callNative('saveImage', document.getElementById('testImage').src)">通过 JS 保存网络图片</button>
+    </div>
 
-    // 初始化页面颜色，与初始的 isLightState = false 状态保持一致（黑底白字）
-    document.body.style.backgroundColor = isLightState ? 'white' : 'black';
-    document.body.style.color = isLightState ? 'black' : 'white';
+    <script>
+        let isLightState = true;
 
-    function callNative(method, message) {
-        // 根据method处理不同参数
-        let paramObj = {};
+        // 初始化页面颜色
+        document.body.style.backgroundColor = isLightState ? 'white' : 'black';
+        document.body.style.color = isLightState ? 'black' : 'white';
 
-        if(method === 'statusBarLight'){
-            isLightState = !isLightState;
-            paramObj = { isLight: isLightState };
+        function callNative(method, message) {
+            let paramObj = {};
 
-            // 根据 isLight 的值动态切换页面背景色和文字颜色
-            if (isLightState) {
-                document.body.style.backgroundColor = 'white';
-                document.body.style.color = 'black'; // 背景变白时，文字设为黑色
+            if (method === 'statusBarLight') {
+                isLightState = !isLightState;
+                paramObj = { isLight: isLightState };
+
+                if (isLightState) {
+                    document.body.style.backgroundColor = 'white';
+                    document.body.style.color = 'black';
+                } else {
+                    document.body.style.backgroundColor = 'black';
+                    document.body.style.color = 'white';
+                }
+            } else if (method === 'saveImage') {
+                paramObj = { url: message };
+            }
+
+            const request = {
+                methods: method,
+                callback: `${method}_callback`,
+                paramObj: paramObj
+            };
+
+            const jsonStr = JSON.stringify(request);
+            console.log("发送数据:", jsonStr);
+            
+            if (window.android && window.android.JSToNative) {
+                // 如果后端使用 Gson 把 paramObj 解析为 String 而非 Object，如果报错可尝试传 JSON.stringify(paramObj) 
+                window.android.JSToNative(jsonStr);
             } else {
-                document.body.style.backgroundColor = 'black';
-                document.body.style.color = 'white'; // 背景变黑时，文字设为白色
+                console.error("Native桥接方法不存在");
+                alert("当前不在 App 环境或桥接方法未注入！\n\n测试数据: " + jsonStr);
             }
         }
 
-        const request = {
-            methods: method,
-            callback: `${method}_callback`,
-            paramObj: paramObj  // 修正后的参数对象
-        };
-
-        console.log("发送数据:", JSON.stringify(request, null, 2));
-        if (window.android && window.android.JSToNative) {
-            window.android.JSToNative(JSON.stringify(request));
-        } else {
-            console.error("Native桥接方法不存在");
+        // 文件选择预览逻辑
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const img = document.getElementById('previewImg');
+                const fileSizeInfo = document.getElementById('fileSizeInfo');
+                
+                img.src = URL.createObjectURL(file);
+                img.style.display = 'inline-block';
+                
+                const fileSizeKB = (file.size / 1024).toFixed(2);
+                console.log(`用户选择的图片大小: ${fileSizeKB} KB`);
+                fileSizeInfo.textContent = `当前图片大小: ${fileSizeKB} KB`;
+                fileSizeInfo.style.display = 'block';
+            }
         }
-    }
-</script>
+    </script>
 </body>
 </html>
