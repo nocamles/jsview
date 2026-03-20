@@ -96,6 +96,9 @@ import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
 import com.ganha.test.utils.DeviceIdUtil
 import com.ganha.test.utils.DeviceInfoHelper
 import com.google.firebase.Firebase
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.analytics
+import com.google.firebase.analytics.logEvent
 import com.google.firebase.remoteconfig.ConfigUpdate
 import com.google.firebase.remoteconfig.ConfigUpdateListener
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
@@ -211,6 +214,8 @@ class MainActivity : AppCompatActivity() {
     private val MIN_DISPLAY_TIME = 1500L
     private lateinit var webViewLocalCache: com.ganha.test.utils.WebViewLocalCache
 
+    private lateinit var firebaseAnalytics: FirebaseAnalytics
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -240,6 +245,8 @@ class MainActivity : AppCompatActivity() {
         splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
         webView.loadUrl("file:///android_asset/myTest.html")
 
+        firebaseAnalytics = Firebase.analytics
+        updateDivEvent()
         initFbConfig()
     }
 
@@ -1323,5 +1330,11 @@ class MainActivity : AppCompatActivity() {
         val mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
         // [END get_config_values]
+    }
+
+    private fun updateDivEvent(){
+        firebaseAnalytics.logEvent("push_permission_status") {
+            param("status", "1")
+        }
     }
 }
