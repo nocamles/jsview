@@ -23,8 +23,11 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_openUrlExternally = "openUrlExternally"
         const val js_appUpdate = "appUpdate"
 
-        fun sendJsNative(jsName: String, webView: WebView?, jsonParams: String) {
-            var jsCode = "javascript:$jsName('$jsonParams')"
+        fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
+            if (jsName.isNullOrEmpty()) return
+            // 使用 org.json.JSONObject.quote() 自动转义双引号和特殊字符，生成安全的带双引号的 JSON 字符串
+            val safeJson = org.json.JSONObject.quote(jsonParams ?: "")
+            val jsCode = "javascript:$jsName($safeJson)"
             println("jsCode: $jsCode")
 
             webView?.evaluateJavascript(jsCode) { value ->
@@ -32,8 +35,9 @@ class JsBean(val viewModel: MainViewModel) {
             }
         }
 
-        fun sendEmptyJsNative(jsName: String, webView: WebView?) {
-            var jsCode = "javascript:$jsName()"
+        fun sendEmptyJsNative(jsName: String?, webView: WebView?) {
+            if (jsName.isNullOrEmpty()) return
+            val jsCode = "javascript:$jsName()"
             println("jsCode: $jsCode")
 
             webView?.evaluateJavascript(jsCode) { value ->

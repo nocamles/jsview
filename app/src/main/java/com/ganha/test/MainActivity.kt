@@ -520,231 +520,246 @@ class MainActivity : AppCompatActivity() {
     fun initJsNative() {
         lifecycleScope.launch {
             viewModel.messageFlow.collect { message ->
-                var jsMessage =
-                    Gson().fromJson(message, JsBeanRequest::class.java)
-                when (jsMessage.methods) {
-                    js_appUpdate -> {
-                        try {
-                            val appUpdateBean = Gson().fromJson(
-                                jsMessage.paramObj,
-                                AppUpdateBean::class.java
-                            )
-                            if (appUpdateBean?.needUpdate == true && !appUpdateBean.updateUrl.isNullOrEmpty()) {
-                                runOnUiThread {
-                                    if (appUpdateBean.isBackGround) {
-                                        downloadAppUpdate(appUpdateBean)
-                                    } else {
-                                        MyCustomTipsDialog(
-                                            this@MainActivity,
-                                            getString(R.string.tips) ?: "版本更新",
-                                            "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
-                                            getString(R.string.cancel) ?: "稍后提醒",
-                                            getString(R.string.save) ?: "立即更新",
-                                            onCancelListener = null,
-                                            onConfirmListener = {
-                                                downloadAppUpdate(appUpdateBean)
-                                            }
-                                        ).apply {
-                                            setCancelable(!appUpdateBean.isForceUpdate)
-                                        }.show()
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_goBack -> {
-                        runOnUiThread {
-                            if (webView.canGoBack()) {
-                                webView.goBack()
-                            } else {
-                                finish()
-                            }
-                        }
-                    }
-
-                    js_refresh -> {
-                        failedUrl?.let { url ->
-                            webView.loadUrl(url)
-                        } ?: webView.reload()
-                    }
-
-                    js_removeSplashScreen -> {
-                        runOnUiThread {
-                            if (splashView.visibility == View.VISIBLE) {
-                                splashView.animate()
-                                    .alpha(0f)
-                                    .setDuration(400)
-                                    .withEndAction {
-                                        destroySplashWebView()
-                                    }
-                                    .start()
-                            }
-                        }
-                    }
-
-                    js_copyToClipboard -> {
-                        try {
-                            val copyBean = Gson().fromJson(
-                                jsMessage.paramObj,
-                                com.ganha.test.bean.CopyBean::class.java
-                            )
-                            copyBean?.text?.let { textToCopy ->
-                                val clipboard =
-                                    getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                val clip =
-                                    android.content.ClipData.newPlainText("label", textToCopy)
-                                clipboard.setPrimaryClip(clip)
-                                runOnUiThread {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        getString(R.string.copy_success),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_shareTo -> {
-                        try {
-                            val shareBean = Gson().fromJson(
-                                jsMessage.paramObj,
-                                com.ganha.test.bean.ShareBean::class.java
-                            )
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                val shareText = buildString {
-                                    if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append(
-                                        "\n"
-                                    )
-                                    if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append(
-                                        "\n"
-                                    )
-                                    if (!shareBean?.url.isNullOrEmpty()) append(shareBean?.url)
-                                }.trim()
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                            }
-                            startActivity(
-                                Intent.createChooser(
-                                    shareIntent,
-                                    getString(R.string.share_to)
-                                )
-                            )
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_openUrlExternally -> {
-                        var jsExterUrlBean =
-                            Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jsExterUrlBean.url))
-                            startActivity(intent)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_vibrate -> {
-                        try {
-                            val vibrateBean =
-                                Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java)
-                                    ?: VibrateBean()
-                            val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-                            if (vibrator.hasVibrator()) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    val amplitude =
-                                        if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
-                                    vibrator.vibrate(
-                                        VibrationEffect.createOneShot(
-                                            vibrateBean.duration,
-                                            amplitude
-                                        )
-                                    )
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    vibrator.vibrate(vibrateBean.duration)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_statusBarLight -> {
-                        var statusBarBean =
-                            Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
-                        setStatusBarTextColor(statusBarBean.isLight)
-                    }
-
-                    js_saveImageToGallery -> {
-                        try {
-                            var jsExterUrlBean =
-                                Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
-                            runOnUiThread {
-                                checkPermissionAndSaveImage(jsExterUrlBean.url)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-
-                    js_deviceInfo -> {
-                        lifecycleScope.launch {
-                            val isEmulator = DeviceInfoHelper.isEmulator()
-                            val isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
-                            val isRooted = DeviceInfoHelper.isRooted()
-                            val isUsbDebuggingOrDevMode =
-                                DeviceInfoHelper.isUsbDebuggingOrDevMode(this@MainActivity)
-                            val hasSimCard = DeviceInfoHelper.hasSimCard(this@MainActivity)
-                            val simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
-                            val deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
-
-                            val simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
-
-                            var versionCode = 0
-                            var versionName = ""
-                            var packName = ""
+                try {
+                    val jsMessage = Gson().fromJson(message, JsBeanRequest::class.java)
+                    if (jsMessage == null || jsMessage.methods.isNullOrEmpty()) return@collect
+                    
+                    when (jsMessage.methods) {
+                        js_appUpdate -> {
                             try {
-                                val packageInfo = packageManager.getPackageInfo(packageName, 0)
-                                versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                    packageInfo.longVersionCode.toInt()
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    packageInfo.versionCode
+                                val appUpdateBean = Gson().fromJson(
+                                    jsMessage.paramObj,
+                                    AppUpdateBean::class.java
+                                )
+                                if (appUpdateBean?.needUpdate == true && !appUpdateBean.updateUrl.isNullOrEmpty()) {
+                                    runOnUiThread {
+                                        if (appUpdateBean.isBackGround) {
+                                            downloadAppUpdate(appUpdateBean)
+                                        } else {
+                                            MyCustomTipsDialog(
+                                                this@MainActivity,
+                                                getString(R.string.tips) ?: "版本更新",
+                                                "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
+                                                getString(R.string.cancel) ?: "稍后提醒",
+                                                getString(R.string.save) ?: "立即更新",
+                                                onCancelListener = null,
+                                                onConfirmListener = {
+                                                    downloadAppUpdate(appUpdateBean)
+                                                }
+                                            ).apply {
+                                                setCancelable(!appUpdateBean.isForceUpdate)
+                                            }.show()
+                                        }
+                                    }
                                 }
-                                versionName = packageInfo.versionName ?: ""
-                                packName = packageName
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
+                        }
 
-                            val appInfo = AppinfoBean(
-                                isEmulator = isEmulator,
-                                isVpnOrProxy = isVpnOrProxy,
-                                isRooted = isRooted,
-                                isUsbDebuggingOrDevMode = isUsbDebuggingOrDevMode,
-                                hasSimCard = hasSimCard,
-                                sim_country = simCountry,
-                                simOperator = simOperator,
-                                deviceId = deviceId,
-                                versionCode = versionCode,
-                                versionName = versionName,
-                                packageName = packName,
-                                statusBarHeight = statusBarHeight.toH5Value(this@MainActivity)
-                            )
-                            val jsonStr = Gson().toJson(appInfo)
-                            withContext(Dispatchers.Main) {
-                                sendJsNative(jsMessage.callback, webView, jsonStr)
+                        js_goBack -> {
+                            runOnUiThread {
+                                if (webView.canGoBack()) {
+                                    webView.goBack()
+                                } else {
+                                    finish()
+                                }
+                            }
+                        }
+
+                        js_refresh -> {
+                            failedUrl?.let { url ->
+                                webView.loadUrl(url)
+                            } ?: webView.reload()
+                        }
+
+                        js_removeSplashScreen -> {
+                            runOnUiThread {
+                                if (splashView.visibility == View.VISIBLE) {
+                                    splashView.animate()
+                                        .alpha(0f)
+                                        .setDuration(400)
+                                        .withEndAction {
+                                            destroySplashWebView()
+                                        }
+                                        .start()
+                                }
+                            }
+                        }
+
+                        js_copyToClipboard -> {
+                            try {
+                                val copyBean = Gson().fromJson(
+                                    jsMessage.paramObj,
+                                    com.ganha.test.bean.CopyBean::class.java
+                                )
+                                copyBean?.text?.let { textToCopy ->
+                                    val clipboard =
+                                        getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    val clip =
+                                        android.content.ClipData.newPlainText("label", textToCopy)
+                                    clipboard.setPrimaryClip(clip)
+                                    runOnUiThread {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            getString(R.string.copy_success),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_shareTo -> {
+                            try {
+                                val shareBean = Gson().fromJson(
+                                    jsMessage.paramObj,
+                                    com.ganha.test.bean.ShareBean::class.java
+                                )
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    val shareText = buildString {
+                                        if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append(
+                                            "\n"
+                                        )
+                                        if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append(
+                                            "\n"
+                                        )
+                                        if (!shareBean?.url.isNullOrEmpty()) append(shareBean?.url)
+                                    }.trim()
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                }
+                                startActivity(
+                                    Intent.createChooser(
+                                        shareIntent,
+                                        getString(R.string.share_to)
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_openUrlExternally -> {
+                            try {
+                                val jsExterUrlBean =
+                                    Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
+                                if (jsExterUrlBean != null && !jsExterUrlBean.url.isNullOrEmpty()) {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(jsExterUrlBean.url))
+                                    startActivity(intent)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_vibrate -> {
+                            try {
+                                val vibrateBean =
+                                    Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java)
+                                        ?: VibrateBean()
+                                val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+                                if (vibrator.hasVibrator()) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        val amplitude =
+                                            if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
+                                        vibrator.vibrate(
+                                            VibrationEffect.createOneShot(
+                                                vibrateBean.duration,
+                                                amplitude
+                                            )
+                                        )
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        vibrator.vibrate(vibrateBean.duration)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_statusBarLight -> {
+                            try {
+                                val statusBarBean =
+                                    Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
+                                if (statusBarBean != null) {
+                                    setStatusBarTextColor(statusBarBean.isLight)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_saveImageToGallery -> {
+                            try {
+                                val jsExterUrlBean =
+                                    Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
+                                if (jsExterUrlBean != null && !jsExterUrlBean.url.isNullOrEmpty()) {
+                                    runOnUiThread {
+                                        checkPermissionAndSaveImage(jsExterUrlBean.url)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_deviceInfo -> {
+                            lifecycleScope.launch {
+                                val isEmulator = DeviceInfoHelper.isEmulator()
+                                val isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
+                                val isRooted = DeviceInfoHelper.isRooted()
+                                val isUsbDebuggingOrDevMode =
+                                    DeviceInfoHelper.isUsbDebuggingOrDevMode(this@MainActivity)
+                                val hasSimCard = DeviceInfoHelper.hasSimCard(this@MainActivity)
+                                val simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
+                                val deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
+
+                                val simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
+
+                                var versionCode = 0
+                                var versionName = ""
+                                var packName = ""
+                                try {
+                                    val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                                    versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                        packageInfo.longVersionCode.toInt()
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        packageInfo.versionCode
+                                    }
+                                    versionName = packageInfo.versionName ?: ""
+                                    packName = packageName
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+
+                                val appInfo = AppinfoBean(
+                                    isEmulator = isEmulator,
+                                    isVpnOrProxy = isVpnOrProxy,
+                                    isRooted = isRooted,
+                                    isUsbDebuggingOrDevMode = isUsbDebuggingOrDevMode,
+                                    hasSimCard = hasSimCard,
+                                    sim_country = simCountry,
+                                    simOperator = simOperator,
+                                    deviceId = deviceId,
+                                    versionCode = versionCode,
+                                    versionName = versionName,
+                                    packageName = packName,
+                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity)
+                                )
+                                val jsonStr = Gson().toJson(appInfo)
+                                withContext(Dispatchers.Main) {
+                                    sendJsNative(jsMessage.callback, webView, jsonStr)
+                                }
                             }
                         }
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
