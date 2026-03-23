@@ -49,6 +49,31 @@
             border-radius: 8px;
             border: 1px solid #ddd;
         }
+        .capsule-group {
+            display: flex;
+            width: 100%;
+        }
+        .capsule-group button {
+            flex: 1;
+            margin: 0;
+            padding: 10px;
+            border-radius: 0;
+            background: #e0e0e0;
+            color: #333;
+            font-size: 14px;
+        }
+        .capsule-group button.active {
+            background: #2196F3;
+            color: white;
+        }
+        .capsule-group button:first-child {
+            border-radius: 20px 0 0 20px;
+            border-right: 1px solid #ccc;
+        }
+        .capsule-group button:last-child {
+            border-radius: 0 20px 20px 0;
+            border-left: none;
+        }
     </style>
 </head>
 <body>
@@ -99,8 +124,16 @@
 
     <div class="section">
         <h3>7. 震动测试 (小幅度/模拟输入震动)</h3>
-        <p>点击下方按钮，触发设备的震动，可传入幅度和时长：</p>
-        <button onclick="callNative('vibrate', {amplitude: 50, duration: 100})">触发震动</button>
+        <p>调节幅度和时长，点击按钮触发设备的震动：</p>
+        <div style="margin: 10px 0;">
+            <label>幅度 (Amplitude): <span id="ampValue">50</span></label>
+            <input type="range" id="vibrateAmp" min="1" max="255" value="50" oninput="document.getElementById('ampValue').innerText = this.value" style="width: 100%;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>时长 (Duration ms): <span id="durValue">100</span></label>
+            <input type="range" id="vibrateDur" min="1" max="2000" value="100" oninput="document.getElementById('durValue').innerText = this.value" style="width: 100%;">
+        </div>
+        <button onclick="triggerVibrate()">触发震动</button>
     </div>
 
     <div class="section">
@@ -129,8 +162,28 @@
 
     <div class="section">
         <h3>12. 版本更新通知测试</h3>
-        <p>点击下方按钮，模拟 H5 发现新版本主动告知原生端：</p>
-        <button class="success" onclick="callNative('appUpdate', {needUpdate: true, updateUrl: 'https://github.com/nocamles/jsview/releases/download/1.1/jsview-1.1.apk', versionCode: 2, versionName: '1.1',apkName:'js-view-1.1',isBackGround : true,isForceUpdate : false})">通知原生版本更新</button>
+        <p>配置更新参数并通知原生端：</p>
+        <div style="margin: 10px 0;">
+            <label>下载链接:</label>
+            <input type="text" id="updateUrl" value="https://github.com/nocamles/jsview/releases/download/1.1/jsview-1.1.apk" style="width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc;">
+        </div>
+        <div style="display: flex; justify-content: space-between; margin: 10px 0; gap: 10px;">
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-size: 14px;">强制更新</label>
+                <div class="capsule-group">
+                    <button type="button" id="forceUpdateTrue" onclick="setForceUpdate(true)">是</button>
+                    <button type="button" id="forceUpdateFalse" class="active" onclick="setForceUpdate(false)">否</button>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; margin-bottom: 5px; font-size: 14px;">后台更新</label>
+                <div class="capsule-group">
+                    <button type="button" id="bgUpdateTrue" class="active" onclick="setBgUpdate(true)">是</button>
+                    <button type="button" id="bgUpdateFalse" onclick="setBgUpdate(false)">否</button>
+                </div>
+            </div>
+        </div>
+        <button class="success" onclick="triggerAppUpdate()">通知原生版本更新</button>
     </div>
 
     <script>
@@ -262,6 +315,40 @@
             } catch (e) {
                 resultElement.textContent = "当前状态: " + jsonStr;
             }
+        }
+
+        function triggerVibrate() {
+            const amp = parseInt(document.getElementById('vibrateAmp').value);
+            const dur = parseInt(document.getElementById('vibrateDur').value);
+            callNative('vibrate', {amplitude: amp, duration: dur});
+        }
+
+        let isForceUpdateVal = false;
+        let isBgUpdateVal = true;
+
+        function setForceUpdate(val) {
+            isForceUpdateVal = val;
+            document.getElementById('forceUpdateTrue').className = val ? 'active' : '';
+            document.getElementById('forceUpdateFalse').className = !val ? 'active' : '';
+        }
+
+        function setBgUpdate(val) {
+            isBgUpdateVal = val;
+            document.getElementById('bgUpdateTrue').className = val ? 'active' : '';
+            document.getElementById('bgUpdateFalse').className = !val ? 'active' : '';
+        }
+
+        function triggerAppUpdate() {
+            const url = document.getElementById('updateUrl').value;
+            callNative('appUpdate', {
+                needUpdate: true, 
+                updateUrl: url, 
+                versionCode: 2, 
+                versionName: '1.1',
+                apkName: 'js-view-1.1',
+                isBackGround: isBgUpdateVal,
+                isForceUpdate: isForceUpdateVal
+            });
         }
     </script>
 </body>
