@@ -3,16 +3,21 @@ package com.ganha.test
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.ganha.test.inappmessaging.MyClickListener
+import com.ganha.test.utils.NotificationsCheckUtil
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.inappmessaging.inAppMessaging
@@ -37,7 +42,8 @@ class MessageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_message)
-
+        if(Build.VERSION.SDK_INT >= 33 && !NotificationsCheckUtil.areNotificationsEnabled(this))
+            ActivityCompat.requestPermissions(this,arrayOf(Manifest.permission.POST_NOTIFICATIONS),123)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Create channel to show notifications.
             val channelId = getString(R.string.default_notification_channel_id)
@@ -101,6 +107,7 @@ class MessageActivity : AppCompatActivity() {
                     val msg = "FCM registration Token: ${token}"
                     Log.d(TAG, msg)
                     Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    findViewById<TextView>(R.id.tv_token).text = token
                 },
             )
             // [END log_reg_token]
@@ -112,6 +119,14 @@ class MessageActivity : AppCompatActivity() {
 
         enableDataCollection()
         addClickListener()
+
+        findViewById<TextView>(R.id.tv_copy).setOnClickListener {
+            val str = findViewById<TextView>(R.id.tv_token).text.toString()
+            if(str.isEmpty()) return@setOnClickListener
+            val cm =getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText(packageName, str))
+            Toast.makeText(this, "copy Success!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun askNotificationPermission() {
