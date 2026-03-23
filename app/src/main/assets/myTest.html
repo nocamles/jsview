@@ -187,7 +187,14 @@
     </div>
 
     <div class="section">
-        <h3>13. 动态权限申请测试</h3>
+        <h3>13. 获取安装社交软件列表</h3>
+        <p>点击下方按钮，获取本机是否安装了指定的社交软件（如 WhatsApp, TikTok 等）：</p>
+        <button class="success" onclick="callNative('installedSocialApps')">获取安装状态</button>
+        <pre id="socialAppsResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+    </div>
+
+    <div class="section">
+        <h3>14. 动态权限申请测试</h3>
         <p>勾选需要申请的权限并配置弹窗文案：</p>
         <div style="margin: 10px 0;">
             <label><input type="checkbox" name="perm_check" value="camera"> 相机 (Camera)</label><br>
@@ -340,6 +347,18 @@
             } catch (e) {
                 resultElement.textContent = "当前状态: " + jsonStr;
             }
+        }
+
+        function installedSocialApps_callback(jsonStr) {
+            console.log("收到社交软件安装状态返回:", jsonStr);
+            const resultElement = document.getElementById('socialAppsResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
         }
 
         function triggerVibrate() {

@@ -49,6 +49,7 @@ import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBean.Companion.js_goBack
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBean.Companion.js_appUpdate
+import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
 import com.ganha.test.bean.JsBean.Companion.js_requestPermission
 import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBeanRequest
@@ -882,6 +883,39 @@ class MainActivity : AppCompatActivity() {
                                         checkPermissionAndSaveImage(jsExterUrlBean.url)
                                     }
                                 }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_installedSocialApps -> {
+                            try {
+                                val pm = packageManager
+                                fun checkInstalled(vararg packages: String): Boolean {
+                                    for (pkg in packages) {
+                                        try {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                                pm.getPackageInfo(pkg, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+                                            } else {
+                                                @Suppress("DEPRECATION")
+                                                pm.getPackageInfo(pkg, 0)
+                                            }
+                                            return true
+                                        } catch (e: Exception) {
+                                            // Ignore
+                                        }
+                                    }
+                                    return false
+                                }
+
+                                val resultObj = org.json.JSONObject().apply {
+                                    put("whatsapp", checkInstalled("com.whatsapp"))
+                                    put("tiktok", checkInstalled("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"))
+                                    put("facebook", checkInstalled("com.facebook.katana"))
+                                    put("kwai", checkInstalled("com.kwai.video", "com.smile.gifmaker"))
+                                    put("instagram", checkInstalled("com.instagram.android"))
+                                }
+                                sendJsNative(jsMessage.callback, webView, resultObj.toString())
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }

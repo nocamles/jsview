@@ -33,6 +33,21 @@
     <!-- Contacts Permissions -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <queries>
+        <!-- WhatsApp -->
+        <package android:name="com.whatsapp" />
+        <!-- TikTok -->
+        <package android:name="com.zhiliaoapp.musically" />
+        <package android:name="com.ss.android.ugc.trill" />
+        <!-- Facebook -->
+        <package android:name="com.facebook.katana" />
+        <!-- Kwai -->
+        <package android:name="com.kwai.video" />
+        <package android:name="com.smile.gifmaker" />
+        <!-- Instagram -->
+        <package android:name="com.instagram.android" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
