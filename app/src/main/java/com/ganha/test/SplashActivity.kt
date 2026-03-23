@@ -15,7 +15,7 @@ class SplashActivity : AppCompatActivity() {
 
         // 设置延迟 1.5 秒跳转到 MainActivity
         Handler(Looper.getMainLooper()).postDelayed({
-            startActivity(Intent(this, MessageActivity::class.java))
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
         }, 1500)
     }

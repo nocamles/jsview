@@ -218,6 +218,13 @@
         <pre id="permissionResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
     </div>
 
+    <div class="section">
+        <h3>15. 获取渠道号测试</h3>
+        <p>页面加载时会自动从 Native 获取渠道号，或者点击下方按钮手动获取：</p>
+        <button class="success" onclick="callNative('channelInfo')">获取渠道号</button>
+        <pre id="channelInfoResult" style="white-space: pre-wrap; word-wrap: break-word;">等待获取中...</pre>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -352,6 +359,18 @@
         function installedSocialApps_callback(jsonStr) {
             console.log("收到社交软件安装状态返回:", jsonStr);
             const resultElement = document.getElementById('socialAppsResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
+        }
+
+        function channelInfo_callback(jsonStr) {
+            console.log("收到渠道信息返回:", jsonStr);
+            const resultElement = document.getElementById('channelInfoResult');
             try {
                 const jsonObj = JSON.parse(jsonStr);
                 resultElement.textContent = JSON.stringify(jsonObj, null, 2);

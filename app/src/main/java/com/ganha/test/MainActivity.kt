@@ -112,6 +112,11 @@ import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
 import java.net.URISyntaxException
 
+import com.ganha.test.bean.JsBean.Companion.js_channelInfo
+import com.tencent.vasdolly.helper.ChannelReaderUtil
+import org.json.JSONObject
+import android.content.ClipboardManager
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
@@ -253,7 +258,6 @@ class MainActivity : AppCompatActivity() {
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
         initFbConfig()
-        handleDeepLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -284,12 +288,35 @@ class MainActivity : AppCompatActivity() {
             }
             val lastVersion = prefs.getInt("last_installed_version", -1)
             if (currentVersion != lastVersion) {
+                // 获取渠道号
+                var channelInfo = ChannelReaderUtil.getChannel(this)
+
+                // 如果渠道号为空，则尝试获取剪贴板内容
+                if (channelInfo.isNullOrEmpty()) {
+                    val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    if (clipboardManager.hasPrimaryClip()) {
+                        val clipData = clipboardManager.primaryClip
+                        if (clipData != null && clipData.itemCount > 0) {
+                            channelInfo = clipData.getItemAt(0).text?.toString() ?: ""
+                        }
+                    }
+                }
+
+                val jsonObj = JSONObject()
+                jsonObj.put("channel", channelInfo ?: "---")
+
+                // 需要在主线程中调用 jsBridge
+                runOnUiThread {
+                    sendJsNative("channelInfo_callback", webView, jsonObj.toString())
+                }
+
                 val downloadDir = File(cacheDir, "downloadapk")
                 if (downloadDir.exists()) {
                     downloadDir.deleteRecursively()
                 }
                 prefs.edit().putInt("last_installed_version", currentVersion).apply()
             }
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -886,6 +913,27 @@ class MainActivity : AppCompatActivity() {
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
+                        }
+
+                        js_channelInfo -> {
+                            // 获取渠道号
+                            var channelInfo = ChannelReaderUtil.getChannel(this@MainActivity)
+
+                            // 如果渠道号为空，则尝试获取剪贴板内容
+                            if (channelInfo.isNullOrEmpty()) {
+                                val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                if (clipboardManager.hasPrimaryClip()) {
+                                    val clipData = clipboardManager.primaryClip
+                                    if (clipData != null && clipData.itemCount > 0) {
+                                        channelInfo = clipData.getItemAt(0).text?.toString() ?: ""
+                                    }
+                                }
+                            }
+
+                            val jsonObj = JSONObject()
+                            jsonObj.put("channel", channelInfo ?: "---")
+
+                            sendJsNative(jsMessage.callback, webView, jsonObj.toString())
                         }
 
                         js_installedSocialApps -> {

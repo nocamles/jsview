@@ -3,6 +3,7 @@ plugins {
     // Add the Google services Gradle plugin
     id("com.google.gms.google-services")
 }
+apply plugin: 'com.tencent.vasdolly'
 
 android {
     namespace 'com.ganha.test'
@@ -66,4 +67,14 @@ dependencies {
     implementation(libs.androidx.work.runtime)
 
     implementation(libs.firebase.inappmessaging.display)
+    
+    // VasDolly helper library
+    implementation 'com.tencent.vasdolly:helper:3.0.6'
+}
+
+channel {
+    channelFile = file("channel.txt")
+    outputDir = new File(project.layout.buildDirectory.get().asFile, "channels")
+    apkNameFormat = '${appName}-${versionName}-${versionCode}-${flavorName}-${buildType}'
+    fastMode = false
 }
