@@ -77,8 +77,8 @@
 
     <div class="section">
         <h3>4. Deep Link 跳转测试</h3>
-        <p>点击下方按钮，测试触发 <code>jsview://</code> 协议。系统会拦截该请求并尝试匹配 AndroidManifest 中的 Intent Filter。</p>
-        <button class="success" onclick="testDeepLink()">触发 Deep Link (jsview://test)</button>
+        <p>点击下方按钮，测试触发 deepLink。系统会拦截该请求并尝试匹配 AndroidManifest 中的 Intent Filter。</p>
+        <button class="success" onclick="testDeepLink()">触发 Deep Link </button>
     </div>
 
     <div class="section">
@@ -177,7 +177,7 @@
         }
 
         function testDeepLink() {
-            const url = 'jsview://test';
+            const url = 'intent://home#Intent;scheme=jsview;package=com.gamego.ganha;end';
             console.log("尝试跳转 Deep Link:", url);
             window.location.href = url;
         }

@@ -88,6 +88,7 @@ import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
 import android.webkit.ValueCallback
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.util.Log
 import com.ganha.test.bean.AppUpdateBean
 import com.ganha.test.bean.AppinfoBean
@@ -106,6 +107,7 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
 import com.google.firebase.remoteconfig.get
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
+import java.net.URISyntaxException
 
 class MainActivity : AppCompatActivity() {
 
@@ -248,6 +250,22 @@ class MainActivity : AppCompatActivity() {
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
         initFbConfig()
+        handleDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        intent?.data?.let { uri ->
+            // 这里是处理外部唤起的逻辑
+            // 比如外部网页点击 jsview://xxx 唤起 App
+             Toast.makeText(this, "收到外部网页唤起: $uri", Toast.LENGTH_SHORT).show()
+            // 如果需要 webView 加载 deeplink 参数，可以在这里处理
+        }
     }
 
     private fun checkAndClearDownloadCache() {
@@ -354,6 +372,36 @@ class MainActivity : AppCompatActivity() {
                 if (url.startsWith("http://") || url.startsWith("https://")) {
                     return super.shouldOverrideUrlLoading(view, request)
                 }
+
+                if (url.startsWith("intent://")) {
+                    try {
+                        val intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        intent.addCategory(Intent.CATEGORY_BROWSABLE)
+                        intent.component = null
+                        intent.selector = null
+
+                        // 检查设备上是否安装了该包名对应的应用
+                        if (intent.resolveActivity(view!!.context.packageManager) != null) {
+                            view.context?.startActivity(intent)
+                        } else {
+                            // 如果没安装应用，可以看是否有 fallback 链接，跳转去下载
+                            val fallbackUrl = intent.getStringExtra("browser_fallback_url")
+                            if (!fallbackUrl.isNullOrEmpty()) {
+                                view.loadUrl(fallbackUrl)
+                            } else {
+                                Log.e("WebView", "未安装目标应用: ${intent.`package`}")
+                            }
+                        }
+                        return true // 拦截处理完毕
+                    } catch (e: URISyntaxException) {
+                        Log.e("WebView", "Intent URI 解析失败", e)
+                        return false
+                    } catch (e: ActivityNotFoundException) {
+                        Log.e("WebView", "未找到对应的 Activity", e)
+                        return true
+                    }
+                }
+
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -372,6 +420,36 @@ class MainActivity : AppCompatActivity() {
                 if (url.startsWith("http://") || url.startsWith("https://")) {
                     return super.shouldOverrideUrlLoading(view, url)
                 }
+
+                if (url.startsWith("intent://")) {
+                    try {
+                        val intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        intent.addCategory(Intent.CATEGORY_BROWSABLE)
+                        intent.component = null
+                        intent.selector = null
+
+                        // 检查设备上是否安装了该包名对应的应用
+                        if (intent.resolveActivity(view!!.context.packageManager) != null) {
+                            view.context?.startActivity(intent)
+                        } else {
+                            // 如果没安装应用，可以看是否有 fallback 链接，跳转去下载
+                            val fallbackUrl = intent.getStringExtra("browser_fallback_url")
+                            if (!fallbackUrl.isNullOrEmpty()) {
+                                view.loadUrl(fallbackUrl)
+                            } else {
+                                Log.e("WebView", "未安装目标应用: ${intent.`package`}")
+                            }
+                        }
+                        return true // 拦截处理完毕
+                    } catch (e: URISyntaxException) {
+                        Log.e("WebView", "Intent URI 解析失败", e)
+                        return false
+                    } catch (e: ActivityNotFoundException) {
+                        Log.e("WebView", "未找到对应的 Activity", e)
+                        return true
+                    }
+                }
+
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
