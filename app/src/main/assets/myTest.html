@@ -143,9 +143,32 @@
     </div>
 
     <div class="section">
-        <h3>9. 原生分享测试</h3>
-        <p>点击下方按钮，唤起原生分享面板：</p>
-        <button class="success" onclick="callNative('shareTo', {title: '分享标题', content: '分享的文本内容', url: 'https://www.example.com'})">触发原生分享</button>
+        <h3>9. 分享测试</h3>
+        <p>配置分享参数，测试定向分享或纯文本/图文分享：</p>
+        <div style="margin: 10px 0;">
+            <label>标题:</label>
+            <input type="text" id="shareTitle" value="分享标题" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>内容:</label>
+            <input type="text" id="shareContent" value="分享的文本内容" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>图片URL (有此URL则分享图片+文字):</label>
+            <input type="text" id="shareImageUrl" value="" placeholder="输入图片网络地址" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>目标应用 (为空唤起系统分享):</label>
+            <select id="shareTargetApp" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+                <option value="">(空) 唤起原生分享</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="kwai">Kwai</option>
+            </select>
+        </div>
+        <button class="success" onclick="testShare()">触发分享</button>
     </div>
 
     <div class="section">
@@ -226,6 +249,20 @@
     </div>
 
     <script>
+        function testShare() {
+            const title = document.getElementById('shareTitle').value;
+            const content = document.getElementById('shareContent').value;
+            const imageUrl = document.getElementById('shareImageUrl').value;
+            const targetApp = document.getElementById('shareTargetApp').value;
+
+            callNative('shareTo', {
+                title: title,
+                content: content,
+                imageUrl: imageUrl,
+                targetApp: targetApp
+            });
+        }
+
         let isLightState = true;
 
         // 初始化页面颜色

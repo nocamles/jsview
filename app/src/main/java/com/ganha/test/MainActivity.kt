@@ -826,25 +826,7 @@ class MainActivity : AppCompatActivity() {
                                     jsMessage.paramObj,
                                     com.ganha.test.bean.ShareBean::class.java
                                 )
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    val shareText = buildString {
-                                        if (!shareBean?.title.isNullOrEmpty()) append(shareBean?.title).append(
-                                            "\n"
-                                        )
-                                        if (!shareBean?.content.isNullOrEmpty()) append(shareBean?.content).append(
-                                            "\n"
-                                        )
-                                        if (!shareBean?.url.isNullOrEmpty()) append(shareBean?.url)
-                                    }.trim()
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }
-                                startActivity(
-                                    Intent.createChooser(
-                                        shareIntent,
-                                        getString(R.string.share_to)
-                                    )
-                                )
+                                handleShare(shareBean)
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -1607,6 +1589,121 @@ class MainActivity : AppCompatActivity() {
         val mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
         // [END get_config_values]
+    }
+
+    private fun handleShare(shareBean: com.ganha.test.bean.ShareBean?) {
+        if (shareBean == null) return
+        lifecycleScope.launch(Dispatchers.IO) {
+            val shareText = buildString {
+                if (!shareBean.title.isNullOrEmpty()) append(shareBean.title).append("\n")
+                if (!shareBean.content.isNullOrEmpty()) append(shareBean.content).append("\n")
+            }.trim()
+
+            var imageUri: Uri? = null
+            if (!shareBean.imageUrl.isNullOrEmpty()) {
+                imageUri = downloadAndSaveImageToCache(shareBean.imageUrl)
+            }
+
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    if (imageUri != null) {
+                        type = "image/*"
+                        putExtra(Intent.EXTRA_STREAM, imageUri)
+                        if (shareText.isNotEmpty()) {
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } else {
+                        type = "text/plain"
+                        if (shareText.isNotEmpty()) {
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                    }
+                }
+
+                val targetPackages = when (shareBean.targetApp?.lowercase()) {
+                    "whatsapp" -> listOf("com.whatsapp")
+                    "facebook" -> listOf("com.facebook.katana")
+                    "instagram" -> listOf("com.instagram.android")
+                    "tiktok" -> listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill")
+                    "kwai" -> listOf("com.kwai.video", "com.smile.gifmaker")
+                    else -> emptyList()
+                }
+
+                var packageToUse: String? = null
+                for (pkg in targetPackages) {
+                    if (isPackageInstalled(pkg)) {
+                        packageToUse = pkg
+                        break
+                    }
+                }
+
+                if (packageToUse != null) {
+                    intent.setPackage(packageToUse)
+                    try {
+                        startActivity(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                    }
+                } else {
+                    startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                }
+            }
+        }
+    }
+
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private suspend fun downloadAndSaveImageToCache(imageUrl: String): Uri? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val bitmap = if (imageUrl.startsWith("data:image")) {
+                    val base64Data = imageUrl.substringAfter(",")
+                    val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                } else {
+                    val url = URL(imageUrl)
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.doInput = true
+                    connection.connect()
+                    BitmapFactory.decodeStream(connection.inputStream)
+                } ?: return@withContext null
+
+                val cachePath = File(cacheDir, "images")
+                if (!cachePath.exists()) {
+                    cachePath.mkdirs()
+                } else {
+                    cachePath.listFiles()?.forEach { it.delete() }
+                }
+
+                val file = File(cachePath, "share_image_${System.currentTimeMillis()}.jpg")
+                val outputStream = FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                outputStream.flush()
+                outputStream.close()
+
+                androidx.core.content.FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "${packageName}.fileprovider",
+                    file
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
     }
 
     private fun updateDivEvent(){
