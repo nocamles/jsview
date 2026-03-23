@@ -23,6 +23,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_statusBarLight = "statusBarLight"
         const val js_openUrlExternally = "openUrlExternally"
         const val js_appUpdate = "appUpdate"
+        const val js_getBaseUrlInfo = "getBaseUrlInfo"
         const val js_payload = "payload"
 
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {

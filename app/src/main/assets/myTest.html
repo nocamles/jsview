@@ -248,6 +248,13 @@
         <pre id="channelInfoResult" style="white-space: pre-wrap; word-wrap: break-word;">等待获取中...</pre>
     </div>
 
+    <div class="section">
+        <h3>16. Remote Config 测试</h3>
+        <p>显示 main_url_text 和 main_url_ganha：</p>
+        <button class="success" onclick="callNative('getBaseUrlInfo')">获取 BaseUrl Info</button>
+        <pre id="remoteConfigResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;">等待获取中...</pre>
+    </div>
+
     <script>
         function testShare() {
             const title = document.getElementById('shareTitle').value;
@@ -509,6 +516,18 @@
         function permission_callback(jsonStr) {
             console.log("收到权限回调:", jsonStr);
             const resultElement = document.getElementById('permissionResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
+        }
+
+        function getBaseUrlInfo_callback(jsonStr) {
+            console.log("收到Remote Config返回:", jsonStr);
+            const resultElement = document.getElementById('remoteConfigResult');
             try {
                 const jsonObj = JSON.parse(jsonStr);
                 resultElement.textContent = JSON.stringify(jsonObj, null, 2);

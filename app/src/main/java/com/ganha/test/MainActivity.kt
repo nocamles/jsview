@@ -49,6 +49,7 @@ import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBean.Companion.js_goBack
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBean.Companion.js_appUpdate
+import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
 import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
 import com.ganha.test.bean.JsBean.Companion.js_requestPermission
 import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
@@ -118,6 +119,9 @@ import org.json.JSONObject
 import android.content.ClipboardManager
 
 class MainActivity : AppCompatActivity() {
+
+    private var mainUrlText: String = ""
+    private var mainUrlGanha: String = ""
 
     private lateinit var webView: WebView
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -951,6 +955,17 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
+                        js_getBaseUrlInfo -> {
+                            try {
+                                val jsonObj = JSONObject()
+                                jsonObj.put("mainUrlText", mainUrlText)
+                                jsonObj.put("mainUrlGanha", mainUrlGanha)
+                                sendJsNative(jsMessage.callback, webView, jsonObj.toString())
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
                         js_deviceInfo -> {
                             lifecycleScope.launch {
                                 val isEmulator = DeviceInfoHelper.isEmulator()
@@ -1585,8 +1600,8 @@ class MainActivity : AppCompatActivity() {
     private fun displayWelcomeMessage() {
         val remoteConfig = Firebase.remoteConfig
         // [START get_config_values]
-        val mainUrlText = remoteConfig["main_url_text"].asString()
-        val mainUrlGanha = remoteConfig["main_url_ganha"].asString()
+        mainUrlText = remoteConfig["main_url_text"].asString()
+        mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
         // [END get_config_values]
     }
