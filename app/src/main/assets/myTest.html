@@ -186,6 +186,31 @@
         <button class="success" onclick="triggerAppUpdate()">通知原生版本更新</button>
     </div>
 
+    <div class="section">
+        <h3>13. 动态权限申请测试</h3>
+        <p>勾选需要申请的权限并配置弹窗文案：</p>
+        <div style="margin: 10px 0;">
+            <label><input type="checkbox" name="perm_check" value="camera"> 相机 (Camera)</label><br>
+            <label><input type="checkbox" name="perm_check" value="storage"> 存储 (Storage)</label><br>
+            <label><input type="checkbox" name="perm_check" value="manage_storage"> 所有文件访问权限 (Manage Storage - Android 11+)</label><br>
+            <label><input type="checkbox" name="perm_check" value="audio"> 麦克风 (Audio)</label><br>
+            <label><input type="checkbox" name="perm_check" value="location"> 定位 (Location)</label><br>
+            <label><input type="checkbox" name="perm_check" value="notification"> 通知 (Notification)</label><br>
+            <label><input type="checkbox" name="perm_check" value="contacts"> 通讯录 (Contacts)</label>
+        </div>
+        <div style="margin: 10px 0;">
+            <label>解释文案 (explainReason):</label>
+            <input type="text" id="explainReason" value="为了提供更好的服务，我们需要获取您的权限" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>跳转设置文案 (forwardtoSettingReason):</label>
+            <input type="text" id="forwardReason" value="请前往系统设置中开启对应权限" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <button onclick="testRequestPermission()">申请选中权限 (requestPermission)</button>
+        <button onclick="testGetPermissionStatus()">检查权限状态 (getPermissionStatus)</button>
+        <pre id="permissionResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+    </div>
+
     <script>
         let isLightState = true;
 
@@ -349,6 +374,73 @@
                 isBackGround: isBgUpdateVal,
                 isForceUpdate: isForceUpdateVal
             });
+        }
+
+        function getSelectedPermissions() {
+            const checkboxes = document.querySelectorAll('input[name="perm_check"]:checked');
+            const perms = [];
+            checkboxes.forEach(cb => {
+                perms.push(cb.value);
+            });
+            return perms;
+        }
+
+        function testRequestPermission() {
+            const perms = getSelectedPermissions();
+            if (perms.length === 0) {
+                alert("请至少勾选一个权限");
+                return;
+            }
+            const explain = document.getElementById('explainReason').value;
+            const forward = document.getElementById('forwardReason').value;
+            
+            callNativeWithCustomCallback('requestPermission', {
+                permissions: perms,
+                explainReason: explain,
+                forwardtoSettingReason: forward
+            }, 'permission_callback');
+        }
+
+        function testGetPermissionStatus() {
+            const perms = getSelectedPermissions();
+            if (perms.length === 0) {
+                alert("请至少勾选一个权限");
+                return;
+            }
+            
+            callNativeWithCustomCallback('getPermissionStatus', {
+                permissions: perms
+            }, 'permission_callback');
+        }
+
+        function callNativeWithCustomCallback(method, paramObj, callbackName) {
+            const request = {
+                methods: method,
+                callback: callbackName,
+                paramObj: paramObj
+            };
+
+            const jsonStr = JSON.stringify(request);
+            console.log("发送数据:", jsonStr);
+            
+            if (window.android && window.android.JSToNative) {
+                window.android.JSToNative(jsonStr);
+            } else {
+                console.error("Native桥接方法不存在");
+                alert("当前不在 App 环境或桥接方法未注入！\n\n测试数据: " + jsonStr);
+            }
+        }
+
+        function permission_callback(jsonStr) {
+            console.log("收到权限回调:", jsonStr);
+            const resultElement = document.getElementById('permissionResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
         }
     </script>
 </body>

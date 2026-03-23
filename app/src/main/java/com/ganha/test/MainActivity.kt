@@ -49,6 +49,8 @@ import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBean.Companion.js_goBack
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBean.Companion.js_appUpdate
+import com.ganha.test.bean.JsBean.Companion.js_requestPermission
+import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
 import com.ganha.test.bean.VibrateBean
@@ -603,6 +605,106 @@ class MainActivity : AppCompatActivity() {
                     if (jsMessage == null || jsMessage.methods.isNullOrEmpty()) return@collect
                     
                     when (jsMessage.methods) {
+                        js_requestPermission -> {
+                            try {
+                                val permissionBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.PermissionBean::class.java)
+                                val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                                val requestedPerms = permissionBean?.permissions ?: if (!permissionBean?.permission.isNullOrEmpty()) listOf(permissionBean!!.permission!!) else emptyList()
+                                
+                                requestedPerms.forEach { perm ->
+                                    when (perm.lowercase()) {
+                                        "camera" -> permList.add(PermissionLists.getCameraPermission())
+                                        "storage" -> {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                                permList.add(PermissionLists.getReadMediaImagesPermission())
+                                                permList.add(PermissionLists.getReadMediaVideoPermission())
+                                                permList.add(PermissionLists.getReadMediaAudioPermission())
+                                            } else {
+                                                permList.add(PermissionLists.getWriteExternalStoragePermission())
+                                                permList.add(PermissionLists.getReadExternalStoragePermission())
+                                            }
+                                        }
+                                        "manage_storage" -> permList.add(PermissionLists.getManageExternalStoragePermission())
+                                        "audio", "microphone" -> permList.add(PermissionLists.getRecordAudioPermission())
+                                        "location" -> {
+                                            permList.add(PermissionLists.getAccessFineLocationPermission())
+                                            permList.add(PermissionLists.getAccessCoarseLocationPermission())
+                                        }
+                                        "notification" -> permList.add(PermissionLists.getPostNotificationsPermission())
+                                        "contacts" -> permList.add(PermissionLists.getReadContactsPermission())
+                                    }
+                                }
+                                
+                                if (permList.isNotEmpty()) {
+                                    PermissionHelper.checkPermission(
+                                        this@MainActivity,
+                                        permList,
+                                        permissionBean?.explainReason ?: getString(R.string.permission_request) ?: "需要获取权限",
+                                        permissionBean?.forwardtoSettingReason ?: getString(R.string.permission_request) ?: "去设置",
+                                        object : RequestCallback {
+                                            override fun onGranted() {
+                                                val jsonStr = "{\"status\":\"granted\"}"
+                                                sendJsNative(jsMessage.callback, webView, jsonStr)
+                                            }
+                                            override fun onDenied() {
+                                                val jsonStr = "{\"status\":\"denied\"}"
+                                                sendJsNative(jsMessage.callback, webView, jsonStr)
+                                            }
+                                        }
+                                    )
+                                } else {
+                                     val jsonStr = "{\"status\":\"error\", \"message\":\"Unknown permissions\"}"
+                                     sendJsNative(jsMessage.callback, webView, jsonStr)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        js_getPermissionStatus -> {
+                            try {
+                                val permissionBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.PermissionBean::class.java)
+                                val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                                val requestedPerms = permissionBean?.permissions ?: if (!permissionBean?.permission.isNullOrEmpty()) listOf(permissionBean!!.permission!!) else emptyList()
+                                
+                                requestedPerms.forEach { perm ->
+                                    when (perm.lowercase()) {
+                                        "camera" -> permList.add(PermissionLists.getCameraPermission())
+                                        "storage" -> {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                                permList.add(PermissionLists.getReadMediaImagesPermission())
+                                                permList.add(PermissionLists.getReadMediaVideoPermission())
+                                                permList.add(PermissionLists.getReadMediaAudioPermission())
+                                            } else {
+                                                permList.add(PermissionLists.getWriteExternalStoragePermission())
+                                                permList.add(PermissionLists.getReadExternalStoragePermission())
+                                            }
+                                        }
+                                        "manage_storage" -> permList.add(PermissionLists.getManageExternalStoragePermission())
+                                        "audio", "microphone" -> permList.add(PermissionLists.getRecordAudioPermission())
+                                        "location" -> {
+                                            permList.add(PermissionLists.getAccessFineLocationPermission())
+                                            permList.add(PermissionLists.getAccessCoarseLocationPermission())
+                                        }
+                                        "notification" -> permList.add(PermissionLists.getPostNotificationsPermission())
+                                        "contacts" -> permList.add(PermissionLists.getReadContactsPermission())
+                                    }
+                                }
+                                
+                                if (permList.isNotEmpty()) {
+                                    val isGranted = com.hjq.permissions.XXPermissions.isGrantedPermissions(this@MainActivity, permList)
+                                    val status = if (isGranted) "granted" else "denied"
+                                    val jsonStr = "{\"status\":\"$status\"}"
+                                    sendJsNative(jsMessage.callback, webView, jsonStr)
+                                } else {
+                                    val jsonStr = "{\"status\":\"error\", \"message\":\"Unknown permissions\"}"
+                                    sendJsNative(jsMessage.callback, webView, jsonStr)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
                         js_appUpdate -> {
                             try {
                                 val appUpdateBean = Gson().fromJson(
