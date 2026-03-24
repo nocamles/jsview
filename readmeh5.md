@@ -174,6 +174,29 @@ function callNativeWithCustomCallback(method, paramObj, callbackName) {
 * **回调**: 无
 > **注**: 原生端会在主页 `onPageFinished` 时调用开屏页的 JS 方法 `finishAnimationFast()` 尝试移除，此接口可作为 H5 主动控制的手段。
 
+### 2.14 获取FCM Token
+* **接口名 (`methods`)**: `getPushToken`
+* **功能**: 获取FCM Token，手机需连接VPN
+* **参数 (`paramObj`)**: 无
+* **回调数据**: JSON 字符串，格式包含如下字段：
+  ```json
+  {
+    "FCMRegistrationToken": "XXX"
+  }
+  ```
+
+### 2.15 点击消息通知栏
+* **接口名 (`methods`)**: `clickNotificationBar`
+* **功能**: 收到FCM发送过来的消息后，设备显示通知栏，点击
+* **参数 (`paramObj`)**: 无
+* **回调数据**: JSON 字符串，格式包含如下字段：暂时定义了这2个字段
+  ```json
+  {
+    "NotificationTitle": "XXX",
+    "NotificationContent": "XXX"
+  }
+  ```
+
 ---
 
 ## 3. 原生主动调用的 JS 方法 (事件监听)

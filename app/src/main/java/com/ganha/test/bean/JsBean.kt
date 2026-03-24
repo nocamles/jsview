@@ -26,6 +26,10 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_getBaseUrlInfo = "getBaseUrlInfo"
         const val js_payload = "payload"
 
+        const val js_getPushToken = "getPushToken"
+
+        const val js_clickNotificationBar = "clickNotificationBar"
+
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
             if (jsName.isNullOrEmpty()) return
             // 使用 org.json.JSONObject.quote() 自动转义双引号和特殊字符，生成安全的带双引号的 JSON 字符串

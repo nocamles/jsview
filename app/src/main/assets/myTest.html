@@ -250,9 +250,23 @@
 
     <div class="section">
         <h3>16. Remote Config 测试</h3>
-        <p>显示 main_url_text 和 main_url_ganha：</p>
+        <p>获取Remote Config上面配置的参数，H5真实域名（测试阶段只拿到数据，没做其他逻辑）：显示 main_url_text 和 main_url_ganha：</p>
         <button class="success" onclick="callNative('getBaseUrlInfo')">获取 BaseUrl Info</button>
         <pre id="remoteConfigResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;">等待获取中...</pre>
+    </div>
+
+    <div class="section">
+        <h3>17.获取FCM Token 测试</h3>
+        <p>显示 FCM Token：</p>
+        <button class="success" onclick="callNative('getPushToken')">获取FCM Token</button>
+        <pre id="getPushTokenResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;">等待获取中...</pre>
+    </div>
+
+    <div class="section">
+        <h3>18.模拟发送通知，如果H5已经调通了getPushToken，就由后端发送消息，此测试入口可以忽略</h3>
+        <p>模拟发送通知，显示通知栏，点击通知栏后，回显通知栏的数据</p>
+        <button class="success" onclick="callNative('clickNotificationBar')">发送通知</button>
+        <pre id="clickNotificationBarResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;">发送中...</pre>
     </div>
 
     <script>
@@ -536,6 +550,31 @@
             }
             resultElement.style.display = 'block';
         }
+
+        function getPushToken_callback(jsonStr) {
+            console.log("收到FCM Token返回:", jsonStr);
+            const resultElement = document.getElementById('getPushTokenResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
+        }
+
+        function clickNotificationBar_callback(jsonStr) {
+            console.log("通知栏内容:", jsonStr);
+            const resultElement = document.getElementById('clickNotificationBarResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
+        }
+
     </script>
 </body>
 </html>

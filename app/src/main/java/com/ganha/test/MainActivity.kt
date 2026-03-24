@@ -1,24 +1,40 @@
 package com.ganha.test
 
-import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.ComponentCaller
 import android.app.Dialog
 import android.app.DownloadManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.ActivityNotFoundException
+import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.media.MediaScannerConnection
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.provider.MediaStore
+import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.URLUtil
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -34,76 +50,52 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.ganha.test.bean.AppUpdateBean
+import com.ganha.test.bean.AppinfoBean
 import com.ganha.test.bean.JsBean
+import com.ganha.test.bean.JsBean.Companion.js_appUpdate
+import com.ganha.test.bean.JsBean.Companion.js_channelInfo
+import com.ganha.test.bean.JsBean.Companion.js_clickNotificationBar
+import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
+import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
+import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
+import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
+import com.ganha.test.bean.JsBean.Companion.js_getPushToken
+import com.ganha.test.bean.JsBean.Companion.js_goBack
+import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
+import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBean.Companion.js_openUrlExternally
 import com.ganha.test.bean.JsBean.Companion.js_refresh
 import com.ganha.test.bean.JsBean.Companion.js_removeSplashScreen
-import com.ganha.test.bean.JsBean.Companion.js_vibrate
-import com.ganha.test.bean.JsBean.Companion.sendJsNative
-import com.ganha.test.bean.JsBean.Companion.js_shareTo
-import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
-import com.ganha.test.bean.JsBean.Companion.js_goBack
-import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
-import com.ganha.test.bean.JsBean.Companion.js_appUpdate
-import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
-import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
 import com.ganha.test.bean.JsBean.Companion.js_requestPermission
-import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
+import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
+import com.ganha.test.bean.JsBean.Companion.js_shareTo
+import com.ganha.test.bean.JsBean.Companion.js_statusBarLight
+import com.ganha.test.bean.JsBean.Companion.js_vibrate
+import com.ganha.test.bean.JsBean.Companion.sendEmptyJsNative
+import com.ganha.test.bean.JsBean.Companion.sendJsNative
 import com.ganha.test.bean.JsBeanRequest
 import com.ganha.test.bean.JsExterUrlBean
-import com.ganha.test.bean.VibrateBean
-import android.os.Vibrator
-import android.os.VibrationEffect
-import android.content.Context.VIBRATOR_SERVICE
-import com.ganha.test.viewmodel.MainViewModel
-import com.google.gson.Gson
-import kotlinx.coroutines.launch
-import kotlin.getValue
-import kotlin.jvm.java
-import androidx.core.view.isVisible
-import androidx.core.view.postDelayed
-import com.ganha.test.bean.JsBean.Companion.js_statusBarLight
-import com.ganha.test.bean.JsBean.Companion.sendEmptyJsNative
 import com.ganha.test.bean.StatusBarBean
-import com.ganha.test.utils.PermissionHelper
-import com.ganha.test.utils.RequestCallback
-import com.hjq.permissions.permission.PermissionLists
-import com.hjq.permissions.permission.dangerous.WriteExternalStoragePermission
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
-import com.ganha.test.utils.MyCustomTipsDialog
-import android.content.ContentValues
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.provider.MediaStore
-import android.util.Base64
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import android.media.MediaScannerConnection
-import java.io.File
-import java.io.FileOutputStream
-import java.io.ByteArrayOutputStream
-import android.webkit.ValueCallback
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.util.Log
-import com.ganha.test.bean.AppUpdateBean
-import com.ganha.test.bean.AppinfoBean
-import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
-import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
+import com.ganha.test.bean.VibrateBean
 import com.ganha.test.utils.DeviceIdUtil
 import com.ganha.test.utils.DeviceInfoHelper
+import com.ganha.test.utils.MyCustomTipsDialog
+import com.ganha.test.utils.PermissionHelper
+import com.ganha.test.utils.RequestCallback
+import com.ganha.test.viewmodel.MainViewModel
+import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.analytics
 import com.google.firebase.analytics.logEvent
+import com.google.firebase.messaging.messaging
 import com.google.firebase.remoteconfig.ConfigUpdate
 import com.google.firebase.remoteconfig.ConfigUpdateListener
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
@@ -111,12 +103,23 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigException
 import com.google.firebase.remoteconfig.get
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
-import java.net.URISyntaxException
-
-import com.ganha.test.bean.JsBean.Companion.js_channelInfo
+import com.google.gson.Gson
+import com.hjq.permissions.permission.PermissionLists
 import com.tencent.vasdolly.helper.ChannelReaderUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import android.content.ClipboardManager
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URISyntaxException
+import java.net.URL
+import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
@@ -232,7 +235,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         webViewLocalCache = com.ganha.test.utils.WebViewLocalCache(this)
 
         enableEdgeToEdge()
@@ -1016,6 +1018,44 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         }
+                        js_getPushToken -> {
+                            Firebase.messaging.token.addOnCompleteListener(
+                                OnCompleteListener { task ->
+                                    if (!task.isSuccessful) {
+                                        Log.w("WebViewTest", "Fetching FCM registration token failed", task.exception)
+                                        return@OnCompleteListener
+                                    }
+                                    // Get new FCM registration token
+                                    val token = task.result
+                                    // Log and toast
+                                    val msg = "FCM registration Token: ${token}"
+                                    Log.d("WebViewTest", msg)
+                                    try {
+                                        val jsonObj = JSONObject()
+                                        jsonObj.put("FCMRegistrationToken", token)
+                                        sendJsNative(jsMessage.callback, webView, jsonObj.toString())
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                },
+                            )
+                        }
+                        js_clickNotificationBar -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                // Create channel to show notifications.
+                                val channelId = getString(R.string.default_notification_channel_id)
+                                val channelName = "TestCCC"
+                                val notificationManager = getSystemService(NotificationManager::class.java)
+                                notificationManager?.createNotificationChannel(
+                                    NotificationChannel(
+                                        channelId,
+                                        channelName,
+                                        NotificationManager.IMPORTANCE_LOW,
+                                    ),
+                                )
+                            }
+                            sendNotification("测试通知内容","测试通知标题")
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -1371,6 +1411,7 @@ class MainActivity : AppCompatActivity() {
             installApk(it)
             pendingInstallApkUri = null 
         }
+        handleNotificationClick(intent)
     }
 
     override fun onPause() {
@@ -1724,6 +1765,72 @@ class MainActivity : AppCompatActivity() {
     private fun updateDivEvent(){
         firebaseAnalytics.logEvent("push_permission_status") {
             param("status", "1")
+        }
+    }
+
+    private fun sendNotification(messageBody: String,title: String = "FCM Message") {
+        val requestCode = 0
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.putExtra("from_notification", true)
+        intent.putExtra("NotificationTitle", title)
+        intent.putExtra("NotificationBody", messageBody)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val channelId = getString(R.string.default_notification_channel_id)
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(messageBody)
+            .setAutoCancel(true)
+            .setSound(defaultSoundUri)
+            .setContentIntent(pendingIntent)
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        // Since android Oreo notification channel is needed.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Channel human readable title",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val timestamp = System.currentTimeMillis()
+        val randomNumber: Int = Random.nextInt(99999) // 生成一个0到99999之间的随机数
+        val notificationId = (timestamp xor randomNumber.toLong()).toInt() // 使用XOR操作符混合时间戳和随机数
+
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
+    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
+        super.onNewIntent(intent, caller)
+        handleNotificationClick(intent)
+    }
+
+    private fun handleNotificationClick(intent: Intent){
+        if (intent.getBooleanExtra("from_notification", false)) {
+            // 清除标志防止重复处理
+            getIntent().removeExtra("from_notification")
+            val title = intent.getStringExtra("NotificationTitle")
+            val content = intent.getStringExtra("NotificationBody")
+            try {
+                val jsonObj = JSONObject()
+                jsonObj.put("NotificationTitle", title)
+                jsonObj.put("NotificationContent", content)
+                Log.w("WebViewTest",jsonObj.toString())
+                sendJsNative("clickNotificationBar_callback", webView, jsonObj.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

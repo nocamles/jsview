@@ -120,12 +120,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun sendNotification(messageBody: String,title: String = "FCM Message") {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.putExtra("from_notification", true)
+        intent.putExtra("NotificationTitle", title)
+        intent.putExtra("NotificationBody", messageBody)
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
             intent,
-            PendingIntent.FLAG_IMMUTABLE,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val channelId = getString(R.string.default_notification_channel_id)
