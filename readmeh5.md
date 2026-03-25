@@ -191,6 +191,18 @@ function callNative(method, paramObj, callbackName) {
   { "status": "background" } // 切到后台
   ```
 
+### 3.3 收到FCM消息通知后
+* **方法名**: `getFCMData_callback` (需在 H5 定义该全局函数)
+* **功能**: 收到FCM消息通知后，会主动调用该方法，把数据返回去。
+* **数据格式**:
+```json
+  {
+    "NotificationTitle": "XXX",
+    "NotificationContent": "XXX",
+    "MsgData": "XXX"
+  }
+  ```
+
 ---
 
 ## 4. 特殊机制说明
