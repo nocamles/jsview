@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity() {
                     pendingInstallApkUri = null
                 }
             } else {
-                Toast.makeText(this, "未授予安装权限", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.permission_install_denied), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -278,7 +278,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleDeepLink(intent: Intent?) {
         intent?.data?.let { uri ->
             val urlStr = uri.toString()
-            Toast.makeText(this, "收到外部网页唤起: $urlStr", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.received_external_web_call, urlStr), Toast.LENGTH_SHORT).show()
             
             if (webView.progress == 100) {
                 val jsCode = "javascript:if(window.JSBridge && window.JSBridge.onDeepLink){window.JSBridge.onDeepLink('$urlStr');}"
@@ -687,8 +687,8 @@ class MainActivity : AppCompatActivity() {
                                     PermissionHelper.checkPermission(
                                         this@MainActivity,
                                         permList,
-                                        permissionBean?.explainReason ?: getString(R.string.permission_request) ?: "需要获取权限",
-                                        permissionBean?.forwardtoSettingReason ?: getString(R.string.permission_request) ?: "去设置",
+                                        permissionBean?.explainReason ?: getString(R.string.need_get_permission),
+                                        permissionBean?.forwardtoSettingReason ?: getString(R.string.go_to_settings),
                                         object : RequestCallback {
                                             override fun onGranted() {
                                                 val jsonStr = "{\"status\":\"granted\"}"
@@ -766,10 +766,10 @@ class MainActivity : AppCompatActivity() {
                                         } else {
                                             MyCustomTipsDialog(
                                                 this@MainActivity,
-                                                getString(R.string.tips) ?: "版本更新",
-                                                "发现新版本: ${appUpdateBean.versionName}\n请确认是否更新？",
-                                                getString(R.string.cancel) ?: "稍后提醒",
-                                                getString(R.string.save) ?: "立即更新",
+                                                getString(R.string.version_update),
+                                                getString(R.string.found_new_version, appUpdateBean.versionName),
+                                                getString(R.string.remind_later),
+                                                getString(R.string.update_now),
                                                 onCancelListener = null,
                                                 onConfirmListener = {
                                                     downloadAppUpdate(appUpdateBean)
@@ -1069,7 +1069,7 @@ class MainActivity : AppCompatActivity() {
                                     ),
                                 )
                             }
-                            sendNotification("测试通知内容","测试通知标题")
+                            sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
                         }
                     }
                 } catch (e: Exception) {
@@ -1205,7 +1205,7 @@ class MainActivity : AppCompatActivity() {
                         installApk(Uri.fromFile(downloadedFile!!))
                     } else {
                         if (isActive) {
-                            Toast.makeText(this@MainActivity, "下载失败", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, getString(R.string.download_failed), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -1253,7 +1253,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(this, "安装失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.install_failed, e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1685,7 +1685,7 @@ class MainActivity : AppCompatActivity() {
                         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = android.content.ClipData.newPlainText("label", shareText)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(this@MainActivity, "已复制专属链接与文案,请在发送时长按粘贴", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, getString(R.string.copied_exclusive_link_and_text), Toast.LENGTH_LONG).show()
                     }
                 }
 
@@ -1711,7 +1711,7 @@ class MainActivity : AppCompatActivity() {
                     try {
                         startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, "未找到短信应用", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, getString(R.string.sms_app_not_found), Toast.LENGTH_SHORT).show()
                     }
                     return@withContext
                 }

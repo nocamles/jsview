@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">js-view</string>
+    <string name="quit_tips">Pressione novamente para sair</string>
+    <string name="cancel">Cancelar</string>
+    <string name="confirm">Confirmar</string>
+    <string name="save">Salvar</string>
+    <string name="tips">Aviso</string>
+    <string name="tips_content">Conteúdo do aviso</string>
+    <string name="downloading_please_wait">Baixando tarefa, por favor aguarde...</string>
+    <string name="permission_storage_download_reason">A permissão de armazenamento é necessária para baixar arquivos.</string>
+    <string name="permission_storage_setting_reason">Permissão de armazenamento ausente. Por favor, ative nas Configurações.</string>
+    <string name="permission_denied">Permissão negada</string>
+    <string name="permission_camera_mic_reason">A página H5 requer permissões de câmera ou microfone para tirar fotos ou gravar voz.</string>
+    <string name="permission_camera_mic_setting_reason">A permissão foi negada. Por favor, ative as permissões manualmente nas Configurações.</string>
+    <string name="permission_denied_function_disabled">Permissão negada, função desativada</string>
+    <string name="download_canceled">Download cancelado</string>
+    <string name="download_task_create_failed">Falha ao criar tarefa</string>
+    <string name="download_success_path">Download concluído!\nLocal: %1$s</string>
+    <string name="download_failed_or_error">Falha no download ou erro no arquivo</string>
+    <string name="save_image_to_gallery_prompt">Salvar imagem na galeria?</string>
+    <string name="permission_storage_save_image_reason">A permissão de armazenamento é necessária para salvar imagens na galeria.</string>
+    <string name="permission_storage_save_image_setting_reason">Permissão de armazenamento ausente. Por favor, ative a permissão nas Configurações.</string>
+    <string name="permission_denied_cannot_save_image">Permissão negada, não é possível salvar a imagem</string>
+    <string name="image_decode_failed">Falha ao decodificar a imagem</string>
+    <string name="save_failed_reason">Falha ao salvar: %1$s</string>
+    <string name="image_saved_successfully">Imagem salva com sucesso na galeria</string>
+    <string name="save_image_failed">Falha ao salvar a imagem</string>
+    <string name="permission_request">Solicitação de permissão</string>
+    <string name="go_to_authorize">Autorizar</string>
+    <string name="permission_tips">Aviso de permissão</string>
+    <string name="reauthorize">Reautorizar</string>
+    <string name="go_to_settings">Ir para as Configurações</string>
+    <string name="downloading_file">Baixando arquivo...</string>
+    <string name="copy_success">Copiado para a área de transferência</string>
+    <string name="share_to">Compartilhar com</string>
+    <string name="default_notification_channel_id" translatable="false">fcm_default_channel</string>
+
+    <string name="permission_install_denied">Permissão de instalação não concedida</string>
+    <string name="received_external_web_call">Invocação de web externa recebida: %1$s</string>
+    <string name="need_get_permission">Permissão necessária</string>
+    <string name="version_update">Atualização de versão</string>
+    <string name="found_new_version">Nova versão encontrada: %1$s\nDeseja atualizar?</string>
+    <string name="remind_later">Lembrar mais tarde</string>
+    <string name="update_now">Atualizar agora</string>
+    <string name="test_notification_content">Conteúdo da notificação de teste</string>
+    <string name="test_notification_title">Título da notificação de teste</string>
+    <string name="download_failed">Falha no download</string>
+    <string name="install_failed">Falha na instalação: %1$s</string>
+    <string name="copied_exclusive_link_and_text">Link e texto exclusivos copiados. Pressione e segure para colar ao enviar.</string>
+    <string name="sms_app_not_found">Aplicativo de SMS não encontrado</string>
+
+    <string name="subscribe_to_weather">Assinar Previsão do Tempo</string>
+    <string name="get_token">Obter Token</string>
+    <string name="copy_token">Copiar Token</string>
+</resources>

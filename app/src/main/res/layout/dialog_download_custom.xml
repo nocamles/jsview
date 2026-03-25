@@ -65,11 +65,15 @@
     <!-- 取消按钮 -->
     <TextView
         android:id="@+id/btnCancel"
-        android:layout_width="100dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:minWidth="100dp"
+        android:layout_height="wrap_content"
+        android:minHeight="40dp"
         android:layout_marginTop="20dp"
         android:background="@drawable/bg_btn_cancel"
         android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
         android:text="@string/cancel"
         android:textColor="#666666"
         android:textSize="14sp"
