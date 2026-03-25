@@ -86,6 +86,7 @@ import com.ganha.test.bean.StatusBarBean
 import com.ganha.test.bean.VibrateBean
 import com.ganha.test.utils.DeviceIdUtil
 import com.ganha.test.utils.DeviceInfoHelper
+import com.ganha.test.utils.FlowEventBus
 import com.ganha.test.utils.MyCustomTipsDialog
 import com.ganha.test.utils.PermissionHelper
 import com.ganha.test.utils.RequestCallback
@@ -646,6 +647,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun initJsNative() {
+        FlowEventBus.with<Map<String, String>>("MessageDataPayload").register(this) {
+            try {
+                val jsonObj = JSONObject()
+                jsonObj.put("NotificationTitle", it["body"] ?: "")
+                jsonObj.put("NotificationContent", it["title"] ?: "")
+                jsonObj.put("MsgData", it["msg_data"] ?: "")
+                Log.w("WebViewTest",jsonObj.toString())
+                sendJsNative("getFCMData_callback", webView, jsonObj.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         lifecycleScope.launch {
             viewModel.messageFlow.collect { message ->
                 try {
@@ -1841,6 +1854,7 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
+        intent.putExtra("NotificationMsgData", "123")
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
@@ -1888,10 +1902,12 @@ class MainActivity : AppCompatActivity() {
             getIntent().removeExtra("from_notification")
             val title = intent.getStringExtra("NotificationTitle")
             val content = intent.getStringExtra("NotificationBody")
+            val msgData = intent.getStringExtra("NotificationMsgData")
             try {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", title)
                 jsonObj.put("NotificationContent", content)
+                jsonObj.put("MsgData", msgData)
                 Log.w("WebViewTest",jsonObj.toString())
                 sendJsNative("clickNotificationBar_callback", webView, jsonObj.toString())
             } catch (e: Exception) {

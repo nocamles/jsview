@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import com.ganha.test.MainActivity
 import com.ganha.test.R
+import com.ganha.test.utils.FlowEventBus
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.jvm.java
@@ -42,7 +43,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Check if message contains a data payload.
         if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
-            sendNotification(remoteMessage.data["body"] ?: "", remoteMessage.data[("title")] ?: "")
+            FlowEventBus.with<Map<String, String>>("MessageDataPayload").post(remoteMessage.data)
+            sendNotification(remoteMessage.data["body"] ?: "", remoteMessage.data[("title")] ?: "",
+                remoteMessage.data["msg_data"] ?: "")
             // Check if data needs to be processed by long running job
             if (isLongRunningJob()) {
                 // For long-running tasks (10 seconds or more) use WorkManager.
@@ -56,7 +59,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         // Check if message contains a notification payload.
         remoteMessage.notification?.let {
             Log.d(TAG, "Message Notification Body: ${it.body}")
-            it.body?.let { body -> sendNotification(body,it.title ?: "") }
+            it.body?.let { body -> sendNotification(body,it.title ?: "",remoteMessage.data["msg_data"] ?: "") }
         }
 
         // Also if you intend on generating your own notifications as a result of a received FCM
@@ -117,13 +120,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      *
      * @param messageBody FCM message body received.
      */
-    private fun sendNotification(messageBody: String,title: String = "FCM Message") {
+    private fun sendNotification(messageBody: String,title: String = "FCM Message",msgData: String = "") {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
+        intent.putExtra("NotificationMsgData", msgData)
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
