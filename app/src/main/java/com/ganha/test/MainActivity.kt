@@ -159,7 +159,7 @@ class MainActivity : AppCompatActivity() {
                 contentResolver.openFileDescriptor(uri, "r")?.use {
                     fileSize = it.statSize
                 }
-                if (fileSize <= 800 * 1024) {
+                if (fileSize <= 500 * 1024) {
                     return@withContext uri
                 }
 
@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
                 var outputStream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
 
-                while (outputStream.toByteArray().size > 800 * 1024 && quality > 10) {
+                while (outputStream.toByteArray().size > 500 * 1024 && quality > 10) {
                     quality -= 10
                     outputStream.reset()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
@@ -617,8 +617,8 @@ class MainActivity : AppCompatActivity() {
             false
         }
 
-        webView.addJavascriptInterface(JsBean(viewModel), "android")
-        splash_webview?.addJavascriptInterface(JsBean(viewModel), "android")
+        webView.addJavascriptInterface(JsBean(viewModel), "App")
+        splash_webview?.addJavascriptInterface(JsBean(viewModel), "App")
     }
 
     private fun setupBackPressed() {
@@ -959,11 +959,12 @@ class MainActivity : AppCompatActivity() {
                                 }
 
                                 val resultObj = org.json.JSONObject().apply {
-                                    put("whatsapp", checkInstalled("com.whatsapp"))
-                                    put("tiktok", checkInstalled("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"))
-                                    put("facebook", checkInstalled("com.facebook.katana"))
-                                    put("kwai", checkInstalled("com.kwai.video", "com.smile.gifmaker"))
+                                    put("whatsapp", checkInstalled("com.whatsapp", "com.whatsapp.w4b"))
+                                    put("facebook", checkInstalled("com.facebook.katana", "com.facebook.lite"))
+                                    put("messenger", checkInstalled("com.facebook.orca", "com.facebook.mlite"))
                                     put("instagram", checkInstalled("com.instagram.android"))
+                                    put("tiktok", checkInstalled("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"))
+                                    put("kwai", checkInstalled("com.kwai.video", "com.smile.gifmaker"))
                                 }
                                 sendJsNative(jsMessage.callback, webView, resultObj.toString())
                             } catch (e: Exception) {

@@ -7,7 +7,7 @@ import java.util.logging.Logger
 
 class JsBean(val viewModel: MainViewModel) {
     companion object {
-        const val js_deviceInfo = "deviceInfo"
+        const val js_deviceInfo = "getDeviceRiskInfo"
         const val js_channelInfo = "channelInfo"
         const val js_installedSocialApps = "installedSocialApps"
         const val js_requestPermission = "requestPermission"

@@ -349,7 +349,7 @@
 
             if (method === 'statusBarLight') {
                 isLightState = !isLightState;
-                let localColor = isLightState ? "#AAAAAA" : "#33333"
+                let localColor = isLightState ? "#FFFFFF" : "#000000"
                 paramObj = { isLight: isLightState ,color: localColor};
 
                 if (isLightState) {
@@ -375,10 +375,10 @@
 
             const jsonStr = JSON.stringify(request);
             console.log("发送数据:", jsonStr);
-            
-            if (window.android && window.android.JSToNative) {
-                // 如果后端使用 Gson 把 paramObj 解析为 String 而非 Object，如果报错可尝试传 JSON.stringify(paramObj) 
-                window.android.JSToNative(jsonStr);
+
+            if (window.App && window.App.JSToNative) {
+                // 如果后端使用 Gson 把 paramObj 解析为 String 而非 Object，如果报错可尝试传 JSON.stringify(paramObj)
+                window.App.JSToNative(jsonStr);
             } else {
                 console.error("Native桥接方法不存在");
                 alert("当前不在 App 环境或桥接方法未注入！\n\n测试数据: " + jsonStr);
@@ -391,10 +391,10 @@
             if (file) {
                 const img = document.getElementById('previewImg');
                 const fileSizeInfo = document.getElementById('fileSizeInfo');
-                
+
                 img.src = URL.createObjectURL(file);
                 img.style.display = 'inline-block';
-                
+
                 const fileSizeKB = (file.size / 1024).toFixed(2);
                 console.log(`用户选择的图片大小: ${fileSizeKB} KB`);
                 fileSizeInfo.textContent = `当前图片大小: ${fileSizeKB} KB`;
@@ -475,9 +475,9 @@
         function triggerAppUpdate() {
             const url = document.getElementById('updateUrl').value;
             callNative('appUpdate', {
-                needUpdate: true, 
-                updateUrl: url, 
-                versionCode: 2, 
+                needUpdate: true,
+                updateUrl: url,
+                versionCode: 2,
                 versionName: '1.1',
                 apkName: 'js-view-1.1',
                 isBackGround: isBgUpdateVal,
@@ -502,7 +502,7 @@
             }
             const explain = document.getElementById('explainReason').value;
             const forward = document.getElementById('forwardReason').value;
-            
+
             callNativeWithCustomCallback('requestPermission', {
                 permissions: perms,
                 explainReason: explain,
@@ -516,7 +516,7 @@
                 alert("请至少勾选一个权限");
                 return;
             }
-            
+
             callNativeWithCustomCallback('getPermissionStatus', {
                 permissions: perms
             }, 'permission_callback');
@@ -531,9 +531,9 @@
 
             const jsonStr = JSON.stringify(request);
             console.log("发送数据:", jsonStr);
-            
-            if (window.android && window.android.JSToNative) {
-                window.android.JSToNative(jsonStr);
+
+            if (window.App && window.App.JSToNative) {
+                window.App.JSToNative(jsonStr);
             } else {
                 console.error("Native桥接方法不存在");
                 alert("当前不在 App 环境或桥接方法未注入！\n\n测试数据: " + jsonStr);

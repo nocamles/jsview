@@ -240,8 +240,8 @@
         };
 
         try {
-            if (window.android && window.android.JSToNative) {
-                window.android.JSToNative(JSON.stringify(request));
+            if (window.App && window.App.JSToNative) {
+                window.App.JSToNative(JSON.stringify(request));
             } else {
                 console.warn('当前非Android原生环境，桥接调用:', JSON.stringify(request));
             }
