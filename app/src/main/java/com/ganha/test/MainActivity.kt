@@ -197,6 +197,7 @@ class MainActivity : AppCompatActivity() {
     private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
+    private var pendingDeepLink: String? = null
     private var backPressedTime = 0L
     private var failedUrl: String? = null
     private var pendingPermissionRequest: PermissionRequest? = null
@@ -264,6 +265,8 @@ class MainActivity : AppCompatActivity() {
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
         initFbConfig()
+
+        handleDeepLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -274,10 +277,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         intent?.data?.let { uri ->
-            // 这里是处理外部唤起的逻辑
-            // 比如外部网页点击 jsview://xxx 唤起 App
-             Toast.makeText(this, "收到外部网页唤起: $uri", Toast.LENGTH_SHORT).show()
-            // 如果需要 webView 加载 deeplink 参数，可以在这里处理
+            val urlStr = uri.toString()
+            Toast.makeText(this, "收到外部网页唤起: $urlStr", Toast.LENGTH_SHORT).show()
+            
+            if (webView.progress == 100) {
+                val jsCode = "javascript:if(window.JSBridge && window.JSBridge.onDeepLink){window.JSBridge.onDeepLink('$urlStr');}"
+                webView.evaluateJavascript(jsCode, null)
+            } else {
+                pendingDeepLink = urlStr
+            }
         }
     }
 
@@ -525,6 +533,12 @@ class MainActivity : AppCompatActivity() {
                             sendEmptyJsNative("finishAnimationFast", splash_webview)
                         }
                     }, 1000)
+                }
+
+                pendingDeepLink?.let { deepLinkUrl ->
+                    val jsCode = "javascript:if(window.JSBridge && window.JSBridge.onDeepLink){window.JSBridge.onDeepLink('$deepLinkUrl');}"
+                    webView.evaluateJavascript(jsCode, null)
+                    pendingDeepLink = null
                 }
             }
         }
