@@ -349,7 +349,8 @@
 
             if (method === 'statusBarLight') {
                 isLightState = !isLightState;
-                paramObj = { isLight: isLightState };
+                let localColor = isLightState ? "#AAAAAA" : "#33333"
+                paramObj = { isLight: isLightState ,color: localColor};
 
                 if (isLightState) {
                     document.body.style.backgroundColor = 'white';

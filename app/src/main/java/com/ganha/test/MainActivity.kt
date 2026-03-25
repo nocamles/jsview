@@ -896,7 +896,7 @@ class MainActivity : AppCompatActivity() {
                                 val statusBarBean =
                                     Gson().fromJson(jsMessage.paramObj, StatusBarBean::class.java)
                                 if (statusBarBean != null) {
-                                    setStatusBarTextColor(statusBarBean.isLight)
+                                    setStatusBarTextColor(statusBarBean)
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()

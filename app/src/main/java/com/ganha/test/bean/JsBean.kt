@@ -20,7 +20,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_onAppLifecycle = "onAppLifecycle"
         const val js_goBack = "goBack"
         const val js_refresh = "refreshPage"
-        const val js_statusBarLight = "statusBarLight"
+        const val js_statusBarLight = "setStatusBarColor"
         const val js_openUrlExternally = "openUrlExternally"
         const val js_appUpdate = "appUpdate"
         const val js_getBaseUrlInfo = "getBaseUrlInfo"

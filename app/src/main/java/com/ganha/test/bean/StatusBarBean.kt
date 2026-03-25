@@ -7,5 +7,6 @@ package com.ganha.test.bean
  *描述:
  */
 data class StatusBarBean(
-    var isLight:Boolean = true
+    var isLightModel:Boolean = true,
+    var color : String = "#FFFFFF"
 )
