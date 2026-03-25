@@ -1660,7 +1660,47 @@ class MainActivity : AppCompatActivity() {
                 imageUri = downloadAndSaveImageToCache(shareBean.imageUrl)
             }
 
+            val isSpecificApp = !shareBean.targetApp.isNullOrEmpty()
+            val isSms = shareBean.targetApp?.lowercase() == "sms"
+
             withContext(Dispatchers.Main) {
+                // 如果是分享到指定App（包含SMS），先把文字复制到剪贴板，并提示用户
+                if (isSpecificApp) {
+                    if (shareText.isNotEmpty()) {
+                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("label", shareText)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(this@MainActivity, "已复制专属链接与文案,请在发送时长按粘贴", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                // SMS短信按照主流软件单独处理
+                if (isSms) {
+                    val intent = if (imageUri != null) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "image/*"
+                            putExtra(Intent.EXTRA_STREAM, imageUri)
+                            if (shareText.isNotEmpty()) {
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("smsto:")
+                            if (shareText.isNotEmpty()) {
+                                putExtra("sms_body", shareText)
+                            }
+                        }
+                    }
+                    try {
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "未找到短信应用", Toast.LENGTH_SHORT).show()
+                    }
+                    return@withContext
+                }
+
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     if (imageUri != null) {
                         type = "image/*"
@@ -1677,28 +1717,39 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                val targetPackages = when (shareBean.targetApp?.lowercase()) {
-                    "whatsapp" -> listOf("com.whatsapp")
-                    "facebook" -> listOf("com.facebook.katana")
-                    "instagram" -> listOf("com.instagram.android")
-                    "tiktok" -> listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill")
-                    "kwai" -> listOf("com.kwai.video", "com.smile.gifmaker")
-                    else -> emptyList()
-                }
-
-                var packageToUse: String? = null
-                for (pkg in targetPackages) {
-                    if (isPackageInstalled(pkg)) {
-                        packageToUse = pkg
-                        break
+                if (isSpecificApp) {
+                    val targetPackages = when (shareBean.targetApp?.lowercase()) {
+                        "whatsapp" -> listOf("com.whatsapp", "com.whatsapp.w4b")
+                        "facebook" -> listOf("com.facebook.katana", "com.facebook.lite")
+                        "messenger" -> listOf("com.facebook.orca", "com.facebook.mlite")
+                        "instagram", "ins" -> listOf("com.instagram.android")
+                        "tiktok" -> listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill")
+                        "kwai" -> listOf("com.kwai.video", "com.smile.gifmaker")
+                        else -> emptyList()
                     }
-                }
 
-                if (packageToUse != null) {
-                    intent.setPackage(packageToUse)
-                    try {
-                        startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
+                    var packageToUse: String? = null
+                    for (pkg in targetPackages) {
+                        if (isPackageInstalled(pkg)) {
+                            packageToUse = pkg
+                            break
+                        }
+                    }
+
+                    if (packageToUse != null) {
+                        intent.setPackage(packageToUse)
+                        try {
+                            startActivity(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            // 当不支持 text/plain 的 ACTION_SEND 时（例如 Instagram 纯文本），降级为直接打开 App 方便用户自行粘贴
+                            val launchIntent = packageManager.getLaunchIntentForPackage(packageToUse)
+                            if (launchIntent != null) {
+                                startActivity(launchIntent)
+                            } else {
+                                startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                            }
+                        }
+                    } else {
                         startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
                     }
                 } else {
