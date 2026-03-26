@@ -66,20 +66,15 @@
             android:value="true" />
 
         <activity
-            android:name=".SplashActivity"
-            android:theme="@style/Theme.Jsview.Splash"
+            android:name=".MainActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Jsview.Main"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".MainActivity"
-            android:launchMode="singleTask"
-            android:windowSoftInputMode="adjustResize"
-            android:exported="true">
             <!-- Deep Link Support -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

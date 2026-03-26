@@ -7,6 +7,12 @@
 
     <style name="Theme.Jsview" parent="Base.Theme.Jsview" />
 
+    <style name="Theme.Jsview.Main" parent="Theme.Jsview">
+        <item name="android:windowBackground">@drawable/splash_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+    </style>
+
     <style name="Theme.Jsview.Splash" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

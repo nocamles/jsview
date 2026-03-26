@@ -119,7 +119,7 @@
     <div class="section">
         <h3>6. 设备信息获取测试</h3>
         <p>点击下方按钮，获取 Native 提供的设备指纹、安全环境和网络信息：</p>
-        <button class="success" onclick="callNative('deviceInfo')">获取设备信息</button>
+        <button class="success" onclick="callNative('getDeviceRiskInfo')">获取设备信息</button>
         <pre id="deviceInfoResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
     </div>
 
@@ -408,7 +408,7 @@
             }
         }
 
-        function deviceInfo_callback(jsonStr) {
+        function getDeviceRiskInfo_callback(jsonStr) {
             console.log("收到设备信息返回:", jsonStr);
             const resultElement = document.getElementById('deviceInfoResult');
             try {

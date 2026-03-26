@@ -25,6 +25,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
@@ -365,6 +366,12 @@ class MainActivity : AppCompatActivity() {
     private fun initWebView() {
         splash_webview?.setBackgroundColor(Color.TRANSPARENT)
         splash_webview?.settings?.javaScriptEnabled = true
+        splash_webview?.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+
+            }
+        }
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -905,23 +912,35 @@ class MainActivity : AppCompatActivity() {
 
                         js_vibrate -> {
                             try {
-                                val vibrateBean =
-                                    Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java)
-                                        ?: VibrateBean()
-                                val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+                                val vibrateBean = Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java) ?: VibrateBean()
+                                val duration = vibrateBean.duration
+
+                                if (duration <= 0L) {
+                                    return@collect
+                                }
+
+                                // 2. 兼容 Android 12 (API 31+) 的 VibratorManager
+                                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                                    vibratorManager.defaultVibrator
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                                }
+
                                 if (vibrator.hasVibrator()) {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                        val amplitude =
-                                            if (vibrateBean.amplitude in 1..255) vibrateBean.amplitude else VibrationEffect.DEFAULT_AMPLITUDE
-                                        vibrator.vibrate(
-                                            VibrationEffect.createOneShot(
-                                                vibrateBean.duration,
-                                                amplitude
-                                            )
-                                        )
+                                        val amplitude = if (vibrateBean.amplitude in 1..255 && vibrator.hasAmplitudeControl()) {
+                                            vibrateBean.amplitude
+                                        } else {
+                                            VibrationEffect.DEFAULT_AMPLITUDE
+                                        }
+
+                                        vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude))
                                     } else {
+                                        // Android 8.0 以下版本
                                         @Suppress("DEPRECATION")
-                                        vibrator.vibrate(vibrateBean.duration)
+                                        vibrator.vibrate(duration)
                                     }
                                 }
                             } catch (e: Exception) {
