@@ -13,10 +13,10 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
-        // 设置延迟 1.5 秒跳转到 MainActivity
+        // 设置延迟 300 ms跳转到 MainActivity
         Handler(Looper.getMainLooper()).postDelayed({
             startActivity(Intent(this, MainActivity::class.java))
             finish()
-        }, 1500)
+        }, 500)
     }
 }

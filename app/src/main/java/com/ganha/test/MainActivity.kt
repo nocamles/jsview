@@ -339,6 +339,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView() {
+        splash_webview?.setBackgroundColor(Color.TRANSPARENT)
         splash_webview?.settings?.javaScriptEnabled = true
         val settings = webView.settings
         settings.javaScriptEnabled = true
