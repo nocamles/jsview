@@ -1,215 +1,208 @@
-# JSBridge 接口说明文档
+# H5 与 Android Native 对接文档
 
-本文档描述了 H5 页面如何与 Android Native 客户端进行交互的 JSBridge 接口。
+本文档详细说明了 H5 页面如何与 Android Native 端进行交互，包括 JS 桥接的初始化、调用方式、支持的接口协议以及 Native 主动调用的全局方法。
 
-## 1. 基础调用方式
+## 1. 交互基础机制
 
-H5 页面通过调用注入到 `window` 对象中的 `App.JSToNative(jsonString)` 方法向原生发送消息。
+Native 会在 WebView 中注入一个名为 `App` 的全局对象。H5 统一通过调用 `window.App.JSToNative(jsonStr)` 向 Native 发送消息。
+Native 处理完成后，会通过执行 `javascript:callbackName('jsonResult')` 的方式将结果回调给 H5。
 
-请求数据的标准 JSON 格式如下：
+### 请求数据格式
 
-```javascript
+H5 向 Native 发送的 `jsonStr` 必须是满足以下结构的 JSON 字符串：
+
+```json
 {
-  "methods": "方法名",           // 必需：要调用的原生方法名
-  "callback": "回调函数名",     // 可选：原生执行完毕后需要调用的全局作用域下的 JS 回调函数名
-  "paramObj": {                  // 可选：传递给原生的参数对象，有些接口可能直接接收字符串或基本类型
-     // ... 具体的参数字段
+  "methods": "调用的方法名（如 getDeviceRiskInfo）",
+  "callback": "回调的全局函数名（可选）",
+  "paramObj": {
+    // 具体的参数对象
   }
 }
 ```
 
-示例封装函数：
+### 通用调用示例
 
 ```javascript
-function callNative(method, paramObj, callbackName) {
+function callNative(method, params, callbackName) {
     const request = {
         methods: method,
-        callback: callbackName || `${method}_callback`,
-        paramObj: paramObj
+        callback: callbackName,
+        paramObj: params || {}
     };
-
-    const jsonStr = JSON.stringify(request);
     if (window.App && window.App.JSToNative) {
-        // 如果后端使用 Gson 把 paramObj 解析为 String 而非 Object，如果报错可尝试传 JSON.stringify(paramObj)
-        window.App.JSToNative(jsonStr);
+        window.App.JSToNative(JSON.stringify(request));
     } else {
-        console.error("Native桥接方法不存在");
+        console.error("Native环境未准备好");
     }
 }
 ```
 
 ---
 
-## 2. 接口列表与功能说明
+## 2. API 接口列表
 
-### 2.1 修改状态栏文字颜色
-* **接口名 (`methods`)**: `statusBarLight`
-* **功能**: 修改系统状态栏的文字/图标颜色（深色/浅色）。
-* **参数 (`paramObj`)**: 
-  * `isLight` (Boolean): `true` 为浅色背景（状态栏文字为深色），`false` 为深色背景（状态栏文字为浅色）。
-  * `color` (String): 状态栏背景颜色，如 `#FFFFFF`。
-* **回调**: 无
+H5 请求的 `methods` 字段必须与下方列表保持一致。
 
-### 2.2 保存图片到相册
-* **接口名 (`methods`)**: `saveImageToGallery`
-* **功能**: 将网络图片或 Base64 格式的图片保存到设备相册。
-* **参数 (`paramObj`)**: 
-  * `url` (String): 图片的网络地址或 Base64 字符串。
-* **回调**: 无（原生端会自动处理权限申请和成功/失败提示）。
-> **注**: WebView 默认拦截了长按图片动作，会自动弹窗提示保存，H5 无需额外处理长按逻辑。
+### 2.1 设备与环境信息
+**获取设备风险及基础信息 (`getDeviceRiskInfo`)**
+获取设备的详细信息，包括是否是模拟器、是否 root、网络状态、版本号等。
+- **methods**: `getDeviceRiskInfo`
+- **返回结果**: 包含 `isEmulator`, `isRooted`, `deviceId`, `versionName` 等字段的 JSON 字符串。
 
-### 2.3 获取设备信息
-* **接口名 (`methods`)**: `deviceInfo`
-* **功能**: 获取设备的详细信息（是否模拟器、VPN、Root、国家代码、应用版本号等）。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`deviceInfo_callback`)**: JSON 字符串，包含设备指纹、安全环境和网络信息。
+**获取渠道号 (`channelInfo`)**
+- **methods**: `channelInfo`
+- **返回结果**: `{"channel": "渠道名称"}`
 
-### 2.4 获取已安装的社交软件列表
-* **接口名 (`methods`)**: `installedSocialApps`
-* **功能**: 获取本机是否安装了指定的几款社交软件。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`installedSocialApps_callback`)**: JSON 字符串，表示安装状态：
+**获取 Firebase 推送 Token (`getPushToken`)**
+- **methods**: `getPushToken`
+- **返回结果**: `{"FCMRegistrationToken": "token_string"}`
+
+**获取 Remote Config 配置 (`getBaseUrlInfo`)**
+- **methods**: `getBaseUrlInfo`
+- **返回结果**: 包含 `mainUrlText` 和 `mainUrlGanha` 的 JSON 字符串。
+
+### 2.2 社交与分享
+**检查社交软件安装状态 (`installedSocialApps`)**
+- **methods**: `installedSocialApps`
+- **返回结果**: `{"whatsapp": true, "facebook": false, "messenger": true, "instagram": false, "tiktok": true, "kwai": false}`
+
+**触发原生分享 (`shareTo`)**
+支持指定平台分享图文或纯文本，附带不同 App 的专属防封策略（如 Facebook 系列纯文本拦截处理）。
+- **methods**: `shareTo`
+- **paramObj**:
   ```json
   {
-    "whatsapp": true,
-    "tiktok": false,
-    "facebook": true,
-    "kwai": false,
-    "instagram": true
+    "text": "分享的文本",
+    "image_url": "分享的图片URL(网络或Base64)",
+    "platform": "指定平台(whatsapp/facebook/messenger/instagram/tiktok/kwai/sms)或为空调起系统面板"
   }
   ```
 
-### 2.5 震动控制
-* **接口名 (`methods`)**: `vibrate`
-* **功能**: 触发设备震动。
-* **参数 (`paramObj`)**: 
-  * `amplitude` (Integer): 震动幅度 (1-255)。
-  * `duration` (Integer): 震动时长，单位为毫秒 (ms)。
-* **回调**: 无
-
-### 2.6 复制文本到剪贴板
-* **接口名 (`methods`)**: `copyToClipboard`
-* **功能**: 将指定的文本复制到系统剪贴板。
-* **参数 (`paramObj`)**: 
-  * `text` (String): 需要复制的文本内容。
-* **回调**: 无
-
-### 2.7 唤起原生分享
-* **接口名 (`methods`)**: `shareTo`
-* **功能**: 唤起系统原生的分享面板或定向分享到指定 App。
-* **参数 (`paramObj`)**: 
-  * `title` (String): 分享的标题。
-  * `content` (String): 分享的正文内容。
-  * `imageUrl` (String): 分享的图片链接（可选，有此 URL 则分享图片+文字）。
-  * `targetApp` (String): 目标应用包名或标识（可选，如 `whatsapp`, `facebook` 等，为空则唤起系统分享）。
-* **回调**: 无
-
-### 2.8 动态权限申请
-* **接口名 (`methods`)**: `requestPermission`
-* **功能**: 主动向原生申请指定的系统权限。
-* **参数 (`paramObj`)**: 
-  * `permissions` (Array<String>): 需要申请的权限标识符数组。支持的标识：`camera`, `storage`, `manage_storage`, `audio`, `location`, `notification`, `contacts`。
-  * `explainReason` (String): 向用户解释为何需要该权限的文案。
-  * `forwardtoSettingReason` (String): 引导用户去设置页开启权限的文案。
-* **回调数据 (`自定义回调名或默认`)**: JSON 字符串，表示申请结果。
-
-### 2.9 获取权限状态
-* **接口名 (`methods`)**: `getPermissionStatus`
-* **功能**: 检查指定权限当前的授权状态（不触发申请弹窗）。
-* **参数 (`paramObj`)**: 包含 `permissions` (Array<String>)。
-* **回调数据 (`自定义回调名或默认`)**: JSON 字符串，表示当前状态。
-
-### 2.10 WebView 导航控制
-* **接口名 (`methods`)**: `goBack`
-* **功能**: 触发原生 WebView 的返回上一页操作。如果 WebView 无法返回，则会退出页面。
-* **参数 (`paramObj`)**: 无
-* **回调**: 无
-
-### 2.11 版本更新通知
-* **接口名 (`methods`)**: `appUpdate`
-* **功能**: 通知原生端进行版本更新下载。
-* **参数 (`paramObj`)**: 
-  * `needUpdate` (Boolean): 是否需要更新。
-  * `updateUrl` (String): APK 下载链接。
-  * `versionCode` (Integer): 新版本号。
-  * `versionName` (String): 新版本名。
-  * `apkName` (String): 下载保存的 APK 文件名。
-  * `isBackGround` (Boolean): 是否后台更新。
-  * `isForceUpdate` (Boolean): 是否强制更新。
-* **回调**: 无
-
-### 2.12 获取渠道号
-* **接口名 (`methods`)**: `channelInfo`
-* **功能**: 从 Native 获取当前包的渠道号。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`channelInfo_callback`)**: JSON 字符串，包含渠道信息。
-
-### 2.13 Remote Config 获取
-* **接口名 (`methods`)**: `getBaseUrlInfo`
-* **功能**: 获取 Remote Config 上面配置的参数（如 H5 真实域名）。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`getBaseUrlInfo_callback`)**: JSON 字符串，包含配置信息。
-
-### 2.14 获取 FCM Token
-* **接口名 (`methods`)**: `getPushToken`
-* **功能**: 获取 Firebase Cloud Messaging (FCM) Token。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`getPushToken_callback`)**: JSON 字符串，包含 FCM Token：
+### 2.3 权限与系统交互
+**动态申请权限 (`requestPermission`)**
+- **methods**: `requestPermission`
+- **paramObj**:
   ```json
   {
-    "FCMRegistrationToken": "XXX"
+    "permissions": ["camera", "storage", "manage_storage", "audio", "location", "notification", "contacts"], 
+    "explainReason": "申请权限的弹窗解释文案",
+    "forwardtoSettingReason": "前往系统设置开启权限的文案"
   }
   ```
+- **返回结果**: `{"status": "granted" | "denied" | "error"}`
 
-### 2.15 模拟点击消息通知栏 (测试用)
-* **接口名 (`methods`)**: `clickNotificationBar`
-* **功能**: 模拟发送通知并点击，用于测试通知回传数据。
-* **参数 (`paramObj`)**: 无
-* **回调数据 (`clickNotificationBar_callback`)**: JSON 字符串，包含通知数据：
+**获取权限状态 (`getPermissionStatus`)**
+- **methods**: `getPermissionStatus`
+- **paramObj**: 结构同 `requestPermission`
+- **返回结果**: `{"status": "granted" | "denied" | "error"}`
+
+**复制文本到系统剪贴板 (`copyToClipboard`)**
+- **methods**: `copyToClipboard`
+- **paramObj**: `{"text": "需要复制的文本"}`
+
+### 2.4 媒体与 UI 交互
+**保存图片到系统相册 (`saveImageToGallery`)**
+- **methods**: `saveImageToGallery`
+- **paramObj**: `{"url": "图片网络地址或Base64"}`
+
+**设置状态栏颜色 (`setStatusBarColor`)**
+- **methods**: `setStatusBarColor`
+- **paramObj**: `{"isLight": true, "color": "#FFFFFF"}`
+
+**触发设备震动 (`vibrate`)**
+- **methods**: `vibrate`
+- **paramObj**: `{"amplitude": 255, "duration": 50}` (amplitude幅度，duration时长毫秒)
+
+**原生页面后退 (`goBack`)**
+触发原生 WebView 返回上一页，当不能再后退时关闭 Activity。
+- **methods**: `goBack`
+
+**刷新页面 (`refreshPage`)**
+- **methods**: `refreshPage`
+
+**移除原生开屏动画 (`removeSplashScreen`)**
+主动通知原生层关闭覆盖在 H5 顶部的启动闪屏 WebView。
+- **methods**: `removeSplashScreen` 
+
+**使用外部浏览器打开链接 (`openUrlExternally`)**
+- **methods**: `openUrlExternally`
+- **paramObj**: `{"url": "https://..."}`
+
+### 2.5 版本管理
+**触发版本更新 (`appUpdate`)**
+通知原生弹出下载弹窗或在后台静默下载并拉起安装。
+- **methods**: `appUpdate`
+- **paramObj**:
   ```json
   {
-    "NotificationTitle": "XXX",
-    "NotificationContent": "XXX"
+    "needUpdate": true,
+    "updateUrl": "apk下载地址",
+    "versionCode": 2,
+    "versionName": "1.1.0",
+    "apkName": "app-release",
+    "isBackGround": true, 
+    "isForceUpdate": false 
   }
   ```
 
 ---
 
-## 3. 原生主动调用的 JS 方法 (事件监听)
+## 3. Native 主动调用 H5 (全局回调)
 
-### 3.1 Deep Link 接收
-* **方法名**: `window.JSBridge.onDeepLink(url)`
-* **功能**: 原生接收到 DeepLink 唤醒后，会将 URL 传递给 H5。
+H5 需要在全局作用域（`window`）下注册以下方法，以便接收 Native 层的事件通知：
 
-### 3.2 前后台状态变更通知
-* **方法名**: `onAppLifecycle(jsonStr)` (需在 H5 定义该全局函数)
-* **功能**: 原生在应用切后台/切前台时，会主动调用该方法。
-* **数据格式**:
-  ```json
-  { "status": "foreground" } // 切到前台
-  // 或
-  { "status": "background" } // 切到后台
-  ```
+### 3.1 前后台生命周期 (`onAppLifecycle`)
+当 App 切换到后台或返回前台时触发。
+```javascript
+window.onAppLifecycle = function(jsonStr) {
+    const data = JSON.parse(jsonStr);
+    console.log("当前状态: ", data.status); // 'foreground' 或 'background'
+};
+```
 
-### 3.3 收到FCM消息通知后
-* **方法名**: `getFCMData_callback` (需在 H5 定义该全局函数)
-* **功能**: 收到FCM消息通知后，会主动调用该方法，把数据返回去。
-* **数据格式**:
-```json
-  {
-    "NotificationTitle": "XXX",
-    "NotificationContent": "XXX",
-    "MsgData": "XXX"
-  }
-  ```
+### 3.2 Deep Link 唤醒 (`JSBridge.onDeepLink`)
+当通过系统外部 Scheme (如 `intent://`) 唤醒 App 时，将接收的 URL 传递给 H5。
+```javascript
+window.JSBridge = window.JSBridge || {};
+window.JSBridge.onDeepLink = function(url) {
+    console.log("Deep Link 唤醒 URL:", url);
+};
+```
+
+### 3.3 Firebase 推送数据透传 (`getFCMData_callback`)
+当 App 收到 Firebase 下发的通知消息透传数据时触发。
+```javascript
+window.getFCMData_callback = function(jsonStr) {
+    const data = JSON.parse(jsonStr);
+    console.log(data.NotificationTitle, data.NotificationContent, data.MsgData);
+};
+```
+
+### 3.4 通知栏点击事件 (`clickNotificationBar_callback`)
+当用户在系统通知栏点击 App 下发的通知时触发。
+```javascript
+window.clickNotificationBar_callback = function(jsonStr) {
+    const data = JSON.parse(jsonStr);
+    console.log("用户点击了通知:", data);
+};
+```
+
+### 3.5 开屏动画结束兜底 (`finishAnimationFast`)
+原生自动移除开屏动画时调用的回调，H5 可用此判断原生是否准备完毕。
+```javascript
+window.finishAnimationFast = function() {
+    console.log("原生开屏页已被移除");
+};
+```
 
 ---
 
-## 4. 特殊机制说明
+## 4. WebView 隐式支持原生特性
 
-1. **相册/文件选择**: 
-   原生实现了 `onShowFileChooser`，在 H5 使用 `<input type="file" accept="image/*">` 时，会自动唤起原生相册，选定图片后并经过处理再返回给 H5。
-2. **H5 权限请求拦截**: 
-   对于 H5 中使用 `navigator.mediaDevices.getUserMedia` 等请求媒体权限的行为，原生会拦截并自动映射为系统的相机/麦克风权限申请。
-3. **Deep Link 处理**:
-   原生重写了 `shouldOverrideUrlLoading`。对于 `intent://` 格式的 URI 和匹配 Activity `<intent-filter>` 的普通 URL，会进行拦截跳转或应用内唤醒处理。
+除上述桥接 API 之外，原生 WebView 还隐式拦截并支持了以下特性，无需专门调用 `callNative`：
+
+1. **选择文件唤起相册 (`<input type="file" accept="image/*">`)**: Native 实现了 `onShowFileChooser`，点击 input 会唤起系统相册，并能在后台线程对大于 500KB 的图片进行质量压缩后返回给 H5。
+2. **长按图片保存**: Native 拦截了网页的长按事件，长按任意图片会自动弹出保存到系统相册的提示对话框。
+3. **音视频权限映射**: 当 H5 调用 `navigator.mediaDevices.getUserMedia` 时，Native 会自动拦截并拉起 Android 系统相机/麦克风权限请求弹窗。
+4. **Intent 协议拦截**: 对于页面中触发的 `intent://` 链接，Native 会尝试在外部拉起对应应用；如果设备未安装，则回退执行 Intent 中指定的 `browser_fallback_url`。
