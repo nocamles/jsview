@@ -79,6 +79,7 @@ import com.ganha.test.bean.JsBean.Companion.js_requestPermission
 import com.ganha.test.bean.JsBean.Companion.js_saveImageToGallery
 import com.ganha.test.bean.JsBean.Companion.js_shareTo
 import com.ganha.test.bean.JsBean.Companion.js_statusBarLight
+import com.ganha.test.bean.JsBean.Companion.js_storage
 import com.ganha.test.bean.JsBean.Companion.js_vibrate
 import com.ganha.test.bean.JsBean.Companion.sendEmptyJsNative
 import com.ganha.test.bean.JsBean.Companion.sendJsNative
@@ -1131,6 +1132,35 @@ class MainActivity : AppCompatActivity() {
                         js_loadErrorUrl -> {
                             runOnUiThread {
                                 showErrorView()
+                            }
+                        }
+
+                        js_storage -> {
+                            try {
+                                val storageBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.StorageBean::class.java)
+                                val prefs = getSharedPreferences("h5_storage", Context.MODE_PRIVATE)
+                                val key = storageBean.key
+                                if (key != null) {
+                                    if (storageBean.type == 0) {
+                                        // 存
+                                        prefs.edit().putString(key, storageBean.value).apply()
+                                        val jsonObj = JSONObject()
+                                        jsonObj.put("status", "success")
+                                        jsonObj.put("action", "save")
+                                        sendJsNative("storageCallback", webView, jsonObj.toString())
+                                    } else {
+                                        // 取
+                                        val value = prefs.getString(key, "")
+                                        val jsonObj = JSONObject()
+                                        jsonObj.put("status", "success")
+                                        jsonObj.put("action", "get")
+                                        jsonObj.put("key", key)
+                                        jsonObj.put("value", value)
+                                        sendJsNative("storageCallback", webView, jsonObj.toString())
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
                         }
                     }

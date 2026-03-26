@@ -280,6 +280,22 @@
         <button class="success" onclick="callNative('loadErrorUrl')">加载错误 URL</button>
     </div>
 
+    <div class="section">
+        <h3>20. 本地存储测试 (SharedPreferences)</h3>
+        <p>通过 Native 读写 SharedPreferences 数据：</p>
+        <div style="margin: 10px 0;">
+            <label>Key:</label>
+            <input type="text" id="storageKey" value="user_name" style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>Value:</label>
+            <input type="text" id="storageValue" value="Zhang San" style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <button onclick="testStorageSave()">保存数据 (Save)</button>
+        <button onclick="testStorageGet()">读取数据 (Get)</button>
+        <pre id="storageResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+    </div>
+
     <script>
         window.JSBridge = window.JSBridge || {};
         window.JSBridge.onDeepLink = function(url) {
@@ -588,6 +604,39 @@
             try {
                 const jsonObj = JSON.parse(jsonStr);
                 resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+                resultElement.textContent = jsonStr;
+            }
+            resultElement.style.display = 'block';
+        }
+
+        function testStorageSave() {
+            const key = document.getElementById('storageKey').value;
+            const value = document.getElementById('storageValue').value;
+            callNativeWithCustomCallback('storage', {
+                type: 0,
+                key: key,
+                value: value
+            }, 'storageCallback');
+        }
+
+        function testStorageGet() {
+            const key = document.getElementById('storageKey').value;
+            callNativeWithCustomCallback('storage', {
+                type: 1,
+                key: key
+            }, 'storageCallback');
+        }
+
+        function storageCallback(jsonStr) {
+            console.log("收到 Storage 回调:", jsonStr);
+            const resultElement = document.getElementById('storageResult');
+            try {
+                const jsonObj = JSON.parse(jsonStr);
+                resultElement.textContent = JSON.stringify(jsonObj, null, 2);
+                if (jsonObj.action === 'get') {
+                    document.getElementById('storageValue').value = jsonObj.value || '';
+                }
             } catch (e) {
                 resultElement.textContent = jsonStr;
             }
