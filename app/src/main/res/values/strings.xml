@@ -50,6 +50,7 @@
     <string name="copied_exclusive_link_and_text">已复制专属链接与文案,请在发送时长按粘贴</string>
     <string name="sms_app_not_found">未找到短信应用</string>
     <string name="launch_app_failed_permission">启动应用失败，请在系统设置中允许应用启动第三方应用</string>
+    <string name="need_get_per_notif">为了提供更好的服务，我们需要获取您的通知权限</string>
 
     <string name="subscribe_to_weather">Subscribe To Weather</string>
     <string name="get_token">Get Token</string>

@@ -50,6 +50,7 @@
     <string name="copied_exclusive_link_and_text">Link e texto exclusivos copiados. Pressione e segure para colar ao enviar.</string>
     <string name="sms_app_not_found">Aplicativo de SMS não encontrado</string>
     <string name="launch_app_failed_permission">Falha ao iniciar o aplicativo. Por favor, permita que o aplicativo inicie aplicativos de terceiros nas configurações do sistema.</string>
+    <string name="need_get_per_notif">Para oferecer um melhor serviço, precisamos obter sua permissão para notificações</string>
 
     <string name="subscribe_to_weather">Assinar Previsão do Tempo</string>
     <string name="get_token">Obter Token</string>
