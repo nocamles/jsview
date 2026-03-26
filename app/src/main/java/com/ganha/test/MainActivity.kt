@@ -268,6 +268,29 @@ class MainActivity : AppCompatActivity() {
         initFbConfig()
 
         handleDeepLink(intent)
+
+        try {
+            val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+            permList.add(PermissionLists.getPostNotificationsPermission())
+            if (permList.isNotEmpty()) {
+                PermissionHelper.checkPermission(
+                    this@MainActivity,
+                    permList,
+                    getString(R.string.need_get_per_notif),
+                    getString(R.string.go_to_settings),
+                    object : RequestCallback {
+                        override fun onGranted() {
+
+                        }
+                        override fun onDenied() {
+
+                        }
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
