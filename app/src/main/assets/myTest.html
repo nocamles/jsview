@@ -146,20 +146,22 @@
     <div class="section">
         <h3>9. 分享测试</h3>
         <p>配置分享参数，测试定向分享或纯文本/图文分享：</p>
+        <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+            <b>兜底策略说明：</b><br>
+            - <code>facebook / instagram / messenger</code>: 图文混合时，仅携带图片唤醒，文案被复制到剪贴板，原生会弹出延迟2秒的复制成功提示。<br>
+            - <code>whatsapp / sms</code>: 正常图文混合传递。<br>
+            - <code>空或其他</code>: 唤起系统默认分享面板。
+        </p>
         <div style="margin: 10px 0;">
-            <label>标题:</label>
-            <input type="text" id="shareTitle" value="分享标题" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+            <label>分享文案 (text):</label>
+            <input type="text" id="shareContent" value="这是分享的文本内容" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
         </div>
         <div style="margin: 10px 0;">
-            <label>内容:</label>
-            <input type="text" id="shareContent" value="分享的文本内容" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
-        </div>
-        <div style="margin: 10px 0;">
-            <label>图片URL (有此URL则分享图片+文字):</label>
+            <label>图片URL (image_url):</label>
             <input type="text" id="shareImageUrl" value="" placeholder="输入图片网络地址" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
         </div>
         <div style="margin: 10px 0;">
-            <label>目标应用 (为空唤起系统分享):</label>
+            <label>目标应用 (platform):</label>
             <select id="shareTargetApp" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
                 <option value="">(空) 唤起原生分享</option>
                 <option value="whatsapp">WhatsApp</option>
@@ -272,6 +274,12 @@
         <pre id="clickNotificationBarResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;">发送中...</pre>
     </div>
 
+    <div class="section">
+        <h3>19. 测试错误页面</h3>
+        <p>在原生端故意加载一个无法访问的错误 URL，触发并进入错误页面：</p>
+        <button class="success" onclick="callNative('loadErrorUrl')">加载错误 URL</button>
+    </div>
+
     <script>
         window.JSBridge = window.JSBridge || {};
         window.JSBridge.onDeepLink = function(url) {
@@ -283,16 +291,14 @@
             }
         };
         function testShare() {
-            const title = document.getElementById('shareTitle').value;
-            const content = document.getElementById('shareContent').value;
+            const text = document.getElementById('shareContent').value;
             const imageUrl = document.getElementById('shareImageUrl').value;
-            const targetApp = document.getElementById('shareTargetApp').value;
+            const platform = document.getElementById('shareTargetApp').value;
 
             callNative('shareTo', {
-                title: title,
-                content: content,
-                imageUrl: imageUrl,
-                targetApp: targetApp
+                text: text,
+                image_url: imageUrl,
+                platform: platform
             });
         }
 

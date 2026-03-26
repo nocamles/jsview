@@ -69,6 +69,7 @@ import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBean.Companion.js_getPushToken
 import com.ganha.test.bean.JsBean.Companion.js_goBack
 import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
+import com.ganha.test.bean.JsBean.Companion.js_loadErrorUrl
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
 import com.ganha.test.bean.JsBean.Companion.js_openUrlExternally
 import com.ganha.test.bean.JsBean.Companion.js_refresh
@@ -1085,6 +1086,11 @@ class MainActivity : AppCompatActivity() {
                             }
                             sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
                         }
+                        js_loadErrorUrl -> {
+                            runOnUiThread {
+                                showErrorView()
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -1680,17 +1686,21 @@ class MainActivity : AppCompatActivity() {
         if (shareBean == null) return
         lifecycleScope.launch(Dispatchers.IO) {
             val shareText = buildString {
-                if (!shareBean.title.isNullOrEmpty()) append(shareBean.title).append("\n")
-                if (!shareBean.content.isNullOrEmpty()) append(shareBean.content).append("\n")
+                val contentText = shareBean.content ?: shareBean.text
+                if (!contentText.isNullOrEmpty()) append(contentText).append("\n")
             }.trim()
 
+            val targetImageUrl = shareBean.imageUrl ?: shareBean.image_url
             var imageUri: Uri? = null
-            if (!shareBean.imageUrl.isNullOrEmpty()) {
-                imageUri = downloadAndSaveImageToCache(shareBean.imageUrl)
+            if (!targetImageUrl.isNullOrEmpty()) {
+                imageUri = downloadAndSaveImageToCache(targetImageUrl)
             }
 
-            val isSpecificApp = !shareBean.targetApp.isNullOrEmpty()
-            val isSms = shareBean.targetApp?.lowercase() == "sms"
+            val targetApp = shareBean.targetApp ?: shareBean.platform
+            val isSpecificApp = !targetApp.isNullOrEmpty()
+            val isSms = targetApp?.lowercase() == "sms"
+            val isMetaApp = targetApp?.lowercase() in listOf("facebook", "messenger", "instagram", "ins")
+            val isImageWithText = imageUri != null && shareText.isNotEmpty()
 
             withContext(Dispatchers.Main) {
                 // 如果是分享到指定App（包含SMS），先把文字复制到剪贴板，并提示用户
@@ -1699,7 +1709,19 @@ class MainActivity : AppCompatActivity() {
                         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = android.content.ClipData.newPlainText("label", shareText)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(this@MainActivity, getString(R.string.copied_exclusive_link_and_text), Toast.LENGTH_LONG).show()
+                        
+                        if (isMetaApp && isImageWithText) {
+                            val appName = when (targetApp?.lowercase()) {
+                                "facebook" -> "Facebook"
+                                "messenger" -> "Messenger"
+                                "instagram", "ins" -> "Instagram"
+                                else -> targetApp
+                            }
+                            Toast.makeText(this@MainActivity, "文案链接已经复制到剪切板，请到${appName}长按黏贴", Toast.LENGTH_LONG).show()
+                            kotlinx.coroutines.delay(2000)
+                        } else {
+                            Toast.makeText(this@MainActivity, getString(R.string.copied_exclusive_link_and_text), Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
 
@@ -1734,7 +1756,8 @@ class MainActivity : AppCompatActivity() {
                     if (imageUri != null) {
                         type = "image/*"
                         putExtra(Intent.EXTRA_STREAM, imageUri)
-                        if (shareText.isNotEmpty()) {
+                        // Meta系如果图文混合，只能带图片过去，不要加 EXTRA_TEXT
+                        if (shareText.isNotEmpty() && !isMetaApp) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -1747,7 +1770,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (isSpecificApp) {
-                    val targetPackages = when (shareBean.targetApp?.lowercase()) {
+                    val targetPackages = when (targetApp?.lowercase()) {
                         "whatsapp" -> listOf("com.whatsapp", "com.whatsapp.w4b")
                         "facebook" -> listOf("com.facebook.katana", "com.facebook.lite")
                         "messenger" -> listOf("com.facebook.orca", "com.facebook.mlite")
@@ -1773,16 +1796,34 @@ class MainActivity : AppCompatActivity() {
                             // 当不支持 text/plain 的 ACTION_SEND 时（例如 Instagram 纯文本），降级为直接打开 App 方便用户自行粘贴
                             val launchIntent = packageManager.getLaunchIntentForPackage(packageToUse)
                             if (launchIntent != null) {
-                                startActivity(launchIntent)
+                                try {
+                                    startActivity(launchIntent)
+                                } catch (e2: Exception) {
+                                    Toast.makeText(this@MainActivity, getString(R.string.launch_app_failed_permission), Toast.LENGTH_LONG).show()
+                                }
                             } else {
-                                startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                                try {
+                                    startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                                } catch (e3: Exception) {
+                                    Toast.makeText(this@MainActivity, getString(R.string.launch_app_failed_permission), Toast.LENGTH_LONG).show()
+                                }
                             }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@MainActivity, getString(R.string.launch_app_failed_permission), Toast.LENGTH_LONG).show()
                         }
                     } else {
-                        startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                        try {
+                            startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                        } catch (e: Exception) {
+                            Toast.makeText(this@MainActivity, getString(R.string.launch_app_failed_permission), Toast.LENGTH_LONG).show()
+                        }
                     }
                 } else {
-                    startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                    try {
+                        startActivity(Intent.createChooser(intent, getString(R.string.share_to)))
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, getString(R.string.launch_app_failed_permission), Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

@@ -29,6 +29,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_getPushToken = "getPushToken"
 
         const val js_clickNotificationBar = "clickNotificationBar"
+        const val js_loadErrorUrl = "loadErrorUrl"
 
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
             if (jsName.isNullOrEmpty()) return

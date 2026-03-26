@@ -49,6 +49,7 @@
     <string name="install_failed">Install failed: %1$s</string>
     <string name="copied_exclusive_link_and_text">Exclusive link and text copied. Long press to paste when sending.</string>
     <string name="sms_app_not_found">SMS app not found</string>
+    <string name="launch_app_failed_permission">Failed to launch app. Please allow the app to launch third-party apps in system settings.</string>
 
     <string name="subscribe_to_weather">Subscribe To Weather</string>
     <string name="get_token">Get Token</string>
