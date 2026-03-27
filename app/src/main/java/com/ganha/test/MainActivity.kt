@@ -1836,9 +1836,25 @@ class MainActivity : AppCompatActivity() {
         mainUrlText = remoteConfig["main_url_text"].asString()
         mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
-        Log.d(TAG,"h5_offline_config:${remoteConfig["h5_offline_config"].asString()}")
-        Log.d(TAG,"h5_base_url:${remoteConfig["h5_base_url"].asString()}")
-        
+
+        val h5OfflineConfig = remoteConfig["h5_offline_config"].asString()
+        val h5BaseUrl = remoteConfig["h5_base_url"].asString()
+        Log.d(TAG,"h5_offline_config:$h5OfflineConfig")
+        Log.d(TAG,"h5_base_url:$h5BaseUrl")
+
+        if (h5OfflineConfig.isNotEmpty()) {
+            try {
+                val json = JSONObject(h5OfflineConfig)
+                val zipUrl = json.optString("zip_url")
+                val versionCode = json.optString("version_code")
+                if (zipUrl.isNotEmpty() && versionCode.isNotEmpty()) {
+                    webViewLocalCache.checkAndDownloadZip(zipUrl, versionCode, h5BaseUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
         apkOfflineConfigJson = remoteConfig["apk_offline_config"].asString()
         Log.d(TAG,"apk_offline_config:${apkOfflineConfigJson}")
 
