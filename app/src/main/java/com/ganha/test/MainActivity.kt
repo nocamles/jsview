@@ -1589,6 +1589,7 @@ class MainActivity : AppCompatActivity() {
         splash_webview?.onResume()
         webView.resumeTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
+        Toast.makeText(this, "已切换到前台", Toast.LENGTH_SHORT).show()
         pendingInstallApkUri?.let {
             installApk(it)
             pendingInstallApkUri = null
@@ -1604,6 +1605,7 @@ class MainActivity : AppCompatActivity() {
         splash_webview?.onPause()
         webView.pauseTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"background\"}")
+        Toast.makeText(this, "已切换到后台", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
