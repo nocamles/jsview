@@ -1828,6 +1828,9 @@ class MainActivity : AppCompatActivity() {
         mainUrlText = remoteConfig["main_url_text"].asString()
         mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
+        Log.d(TAG,"h5_offline_config:${remoteConfig["h5_offline_config"].asString()}")
+        Log.d(TAG,"h5_base_url:${remoteConfig["h5_base_url"].asString()}")
+        Log.d(TAG,"apk_offline_config:${remoteConfig["apk_offline_config"].asString()}")
         // [END get_config_values]
     }
 
@@ -2045,8 +2048,8 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
-        intent.putExtra("NotificationMsgType","2")
-        intent.putExtra("NotificationMsgJumpUrl","https://www.baidu.com/")
+        intent.putExtra("NotificationMsgType","3")
+        intent.putExtra("NotificationMsgJumpUrl","https://ganhagogo.com.br/2qvCHyvB5Ys")
         intent.putExtra("NotificationMsgData", "123")
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -2138,7 +2141,7 @@ class MainActivity : AppCompatActivity() {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl))
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            this@MainActivity.startActivity(intent)
+                            this@MainActivity.startActivity(Intent.createChooser(intent, "Open with"))
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
