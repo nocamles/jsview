@@ -190,32 +190,6 @@
     </div>
 
     <div class="section">
-        <h3>12. 版本更新通知测试</h3>
-        <p>配置更新参数并通知原生端：</p>
-        <div style="margin: 10px 0;">
-            <label>下载链接:</label>
-            <input type="text" id="updateUrl" value="https://github.com/nocamles/jsview/releases/download/1.1/jsview-1.1.apk" style="width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc;">
-        </div>
-        <div style="display: flex; justify-content: space-between; margin: 10px 0; gap: 10px;">
-            <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-size: 14px;">强制更新</label>
-                <div class="capsule-group">
-                    <button type="button" id="forceUpdateTrue" onclick="setForceUpdate(true)">是</button>
-                    <button type="button" id="forceUpdateFalse" class="active" onclick="setForceUpdate(false)">否</button>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-size: 14px;">后台更新</label>
-                <div class="capsule-group">
-                    <button type="button" id="bgUpdateTrue" class="active" onclick="setBgUpdate(true)">是</button>
-                    <button type="button" id="bgUpdateFalse" onclick="setBgUpdate(false)">否</button>
-                </div>
-            </div>
-        </div>
-        <button class="success" onclick="triggerAppUpdate()">通知原生版本更新</button>
-    </div>
-
-    <div class="section">
         <h3>13. 获取安装社交软件列表</h3>
         <p>点击下方按钮，获取本机是否安装了指定的社交软件（如 WhatsApp, TikTok 等）：</p>
         <button class="success" onclick="callNative('installedSocialApps')">获取安装状态</button>

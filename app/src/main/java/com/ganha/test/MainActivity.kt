@@ -130,6 +130,9 @@ import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
+    private var isPageLoadedSuccessfully = false
+    private var apkOfflineConfigJson: String? = null
+
     private var mainUrlText: String = ""
     private var mainUrlGanha: String = ""
 
@@ -560,6 +563,11 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 android.util.Log.e("WebViewTest", "主页面已加载完毕进入 onPageFinished: $url")
+
+                if (url != null && !url.contains("net_error.html") && url != "about:blank") {
+                    isPageLoadedSuccessfully = true
+                    checkAndTriggerUpdate(apkOfflineConfigJson)
+                }
 
                 if (splashView.isVisible) {
                     sendEmptyJsNative("finishAnimationFast", splash_webview)
@@ -1830,8 +1838,62 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
         Log.d(TAG,"h5_offline_config:${remoteConfig["h5_offline_config"].asString()}")
         Log.d(TAG,"h5_base_url:${remoteConfig["h5_base_url"].asString()}")
-        Log.d(TAG,"apk_offline_config:${remoteConfig["apk_offline_config"].asString()}")
+        
+        apkOfflineConfigJson = remoteConfig["apk_offline_config"].asString()
+        Log.d(TAG,"apk_offline_config:${apkOfflineConfigJson}")
+
+        if (isPageLoadedSuccessfully) {
+            checkAndTriggerUpdate(apkOfflineConfigJson)
+        }
         // [END get_config_values]
+    }
+
+    private fun checkAndTriggerUpdate(configJson: String?) {
+        if (configJson.isNullOrEmpty()) return
+        try {
+            val jsonObj = JSONObject(configJson)
+            val needUpdate = jsonObj.optBoolean("need_update", false)
+            if (needUpdate) {
+                val appUpdateBean = AppUpdateBean(
+                    needUpdate = true,
+                    updateUrl = jsonObj.optString("apk_url", ""),
+                    versionCode = 0,
+                    versionName = jsonObj.optString("version_code", ""),
+                    apkName = "app_update_${jsonObj.optString("version_code", "")}",
+                    isBackGround = jsonObj.optBoolean("is_back_ground", false),
+                    isForceUpdate = jsonObj.optBoolean("is_force_update", false)
+                )
+
+                if (!appUpdateBean.updateUrl.isNullOrEmpty()) {
+                    runOnUiThread {
+                        if (appUpdateBean.isBackGround) {
+                            downloadAppUpdate(appUpdateBean)
+                        } else {
+                            val content = jsonObj.optString("content", "")
+                                .replace("<p>", "").replace("</p>", "\n").trim()
+
+                            MyCustomTipsDialog(
+                                this@MainActivity,
+                                jsonObj.optString("title", getString(R.string.version_update)),
+                                content,
+                                getString(R.string.remind_later),
+                                getString(R.string.update_now),
+                                onCancelListener = null,
+                                onConfirmListener = {
+                                    downloadAppUpdate(appUpdateBean)
+                                }
+                            ).apply {
+                                setCancelable(!appUpdateBean.isForceUpdate)
+                            }.show()
+                        }
+                    }
+                    // 触发后清空配置，防止重复触发（如页面刷新）
+                    apkOfflineConfigJson = null
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun handleShare(shareBean: com.ganha.test.bean.ShareBean?) {
