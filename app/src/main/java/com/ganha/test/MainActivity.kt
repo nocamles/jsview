@@ -842,9 +842,26 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         js_refresh -> {
-                            failedUrl?.let { url ->
-                                webView.loadUrl(url)
-                            } ?: webView.reload()
+                            try {
+                                val jsExterUrlBean = Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
+                                val retryUrl = jsExterUrlBean?.url
+                                runOnUiThread {
+                                    if (!retryUrl.isNullOrEmpty()) {
+                                        failedUrl = retryUrl
+                                        webView.loadUrl(retryUrl)
+                                    } else {
+                                        failedUrl?.let { url ->
+                                            webView.loadUrl(url)
+                                        } ?: webView.reload()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    failedUrl?.let { url ->
+                                        webView.loadUrl(url)
+                                    } ?: webView.reload()
+                                }
+                            }
                         }
 
                         js_removeSplashScreen -> {
@@ -1023,6 +1040,7 @@ class MainActivity : AppCompatActivity() {
                                     put("instagram", checkInstalled("com.instagram.android"))
                                     put("tiktok", checkInstalled("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"))
                                     put("kwai", checkInstalled("com.kwai.video", "com.smile.gifmaker"))
+                                    put("telegram", checkInstalled("org.telegram.messenger", "org.thunderdog.challegram"))
                                 }
                                 sendJsNative(jsMessage.callback, webView, resultObj.toString())
                             } catch (e: Exception) {
@@ -1130,8 +1148,17 @@ class MainActivity : AppCompatActivity() {
                             sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
                         }
                         js_loadErrorUrl -> {
-                            runOnUiThread {
-                                showErrorView()
+                            try {
+                                val jsExterUrlBean = Gson().fromJson(jsMessage.paramObj, JsExterUrlBean::class.java)
+                                val urlStr = jsExterUrlBean?.url
+                                runOnUiThread {
+                                    showErrorView(urlStr)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                runOnUiThread {
+                                    showErrorView()
+                                }
                             }
                         }
 
@@ -1502,9 +1529,14 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun showErrorView() {
+    fun showErrorView(url: String? = null) {
         destroySplashWebView()
-        webView.loadUrl("file:///android_asset/net_error.html")
+        if (!url.isNullOrEmpty()) {
+            failedUrl = url
+        }
+        val targetUrl = failedUrl ?: ""
+        val encodedUrl = java.net.URLEncoder.encode(targetUrl, "UTF-8")
+        webView.loadUrl("file:///android_asset/net_error.html?url=$encodedUrl")
     }
 
     override fun onResume() {

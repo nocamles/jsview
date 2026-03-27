@@ -78,7 +78,7 @@
 </head>
 <body>
     <h3>1. JS 调用 Native 基础测试</h3>
-    <button onclick="callNative('statusBarLight')">状态栏颜色修改</button>
+    <button onclick="callNative('setStatusBarColor')">状态栏颜色修改</button>
 
     <div class="section">
         <h3>2. 图片上传测试 (唤起相册)</h3>
@@ -170,6 +170,7 @@
                 <option value="instagram">Instagram</option>
                 <option value="tiktok">TikTok</option>
                 <option value="kwai">Kwai</option>
+                <option value="telegram">Telegram</option>
                 <option value="sms">SMS短信</option>
             </select>
         </div>
@@ -277,7 +278,7 @@
     <div class="section">
         <h3>19. 测试错误页面</h3>
         <p>在原生端故意加载一个无法访问的错误 URL，触发并进入错误页面：</p>
-        <button class="success" onclick="callNative('loadErrorUrl')">加载错误 URL</button>
+        <button class="success" onclick="callNative('loadErrorUrl', window.location.href)">加载错误 URL</button>
     </div>
 
     <div class="section">
@@ -369,10 +370,10 @@
         function callNative(method, message) {
             let paramObj = {};
 
-            if (method === 'statusBarLight') {
+            if (method === 'setStatusBarColor') {
                 isLightState = !isLightState;
-                let localColor = isLightState ? "#FFFFFF" : "#000000"
-                paramObj = { isLight: isLightState ,color: localColor};
+                let localColor = isLightState ? "#FFFFFF" : "#0000FF"
+                paramObj = { isLightModel: isLightState ,color: localColor};
 
                 if (isLightState) {
                     document.body.style.backgroundColor = 'white';
@@ -381,7 +382,7 @@
                     document.body.style.backgroundColor = 'black';
                     document.body.style.color = 'white';
                 }
-            } else if (method === 'saveImageToGallery') {
+            } else if (method === 'saveImageToGallery' || method === 'loadErrorUrl') {
                 paramObj = { url: message };
             } else if (method === 'vibrate') {
                 paramObj = message || { amplitude: 255, duration: 50 };

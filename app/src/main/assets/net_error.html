@@ -170,6 +170,11 @@
     </div>
 
     <script>
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
         function retryLoad() {
             const btn = document.getElementById('retryBtn');
             const btnText = document.getElementById('btnText');
@@ -180,15 +185,18 @@
 
             // 延迟一点点时间执行重试，给用户视觉反馈
             setTimeout(() => {
-                 const request = {
+                const targetUrl = getUrlParam('url') || "";
+                const request = {
                     methods: 'refreshPage',
                     callback: `refresh_callback`,
-                    paramObj: null
+                    paramObj: { url: targetUrl }
                 };
 
                 // 调用 Android 原生方法
                 try {
-                    if (window.android && window.android.JSToNative) {
+                    if (window.App && window.App.JSToNative) {
+                        window.App.JSToNative(JSON.stringify(request));
+                    } else if (window.android && window.android.JSToNative) {
                         window.android.JSToNative(JSON.stringify(request));
                     } else {
                         // 如果在浏览器环境测试时，给出提示，方便调试

@@ -39,11 +39,18 @@ fun ComponentActivity.setStatusBarTextColor(statusBarBean: StatusBarBean) {
 
     if (statusBarBgView == null) {
         // 如果还没有注入过，就动态创建一个 View 作为状态栏背景
+        
+        // 尝试直接获取当前的状态栏高度
+        var initialHeight = 0
+        ViewCompat.getRootWindowInsets(window.decorView)?.let { insets ->
+            initialHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+        }
+        
         statusBarBgView = View(this).apply {
             this.tag = tag
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0 // 初始高度设为0，随后通过 WindowInsets 动态调整
+                initialHeight // 初始高度，如果有获取到则直接设置
             ).apply {
                 gravity = Gravity.TOP // 悬浮在最顶部
             }
@@ -60,6 +67,9 @@ fun ComponentActivity.setStatusBarTextColor(statusBarBean: StatusBarBean) {
             }
             insets // 返回 insets，不拦截传递
         }
+        
+        // 动态添加View后请求分发Insets，以便初始更新高度
+        ViewCompat.requestApplyInsets(statusBarBgView)
     }
 
     // 3. 为这个占位 View 设置你想要的颜色
