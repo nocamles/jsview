@@ -1097,21 +1097,29 @@ class MainActivity : AppCompatActivity() {
 
                         js_deviceInfo -> {
                             lifecycleScope.launch {
-                                val isEmulator = DeviceInfoHelper.isEmulator()
-                                val isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
-                                val isRooted = DeviceInfoHelper.isRooted()
-                                val isUsbDebuggingOrDevMode =
-                                    DeviceInfoHelper.isUsbDebuggingOrDevMode(this@MainActivity)
-                                val hasSimCard = DeviceInfoHelper.hasSimCard(this@MainActivity)
-                                val simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
-                                val deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
-
-                                val simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
-
+                                var isEmulator = false
+                                var isVpnOrProxy = false
+                                var isRooted = false
+                                var isUsbDebuggingOrDevMode = false
+                                var hasSimCard = false
+                                var simOperator = ""
+                                var deviceId = ""
+                                var simCountry = ""
                                 var versionCode = 0
                                 var versionName = ""
-                                var packName = ""
+                                var packName = packageName
+                                
                                 try {
+                                    isEmulator = DeviceInfoHelper.isEmulator()
+                                    isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
+                                    isRooted = DeviceInfoHelper.isRooted()
+                                    isUsbDebuggingOrDevMode =
+                                        DeviceInfoHelper.isUsbDebuggingOrDevMode(this@MainActivity)
+                                    hasSimCard = DeviceInfoHelper.hasSimCard(this@MainActivity)
+                                    simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
+                                    deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
+                                    simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
+
                                     val packageInfo = packageManager.getPackageInfo(packageName, 0)
                                     versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                                         packageInfo.longVersionCode.toInt()
@@ -1120,8 +1128,7 @@ class MainActivity : AppCompatActivity() {
                                         packageInfo.versionCode
                                     }
                                     versionName = packageInfo.versionName ?: ""
-                                    packName = packageName
-                                } catch (e: Exception) {
+                                } catch (e: Throwable) {
                                     e.printStackTrace()
                                 }
 
