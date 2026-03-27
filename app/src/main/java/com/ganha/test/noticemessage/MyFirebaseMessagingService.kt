@@ -3,8 +3,10 @@ package com.ganha.test.noticemessage
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Intent
-import android.media.RingtoneManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -15,7 +17,7 @@ import com.ganha.test.R
 import com.ganha.test.utils.FlowEventBus
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import kotlin.jvm.java
+
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
@@ -44,8 +46,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
             FlowEventBus.with<Map<String, String>>("MessageDataPayload").post(remoteMessage.data)
-            sendNotification(remoteMessage.data["body"] ?: "", remoteMessage.data[("title")] ?: "",
-                remoteMessage.data["msg_data"] ?: "")
+            //sendNotification(remoteMessage.data["body"] ?: "", remoteMessage.data[("title")] ?: "",
+                //remoteMessage.data["msg_data"] ?: "")
+            sendNotification(remoteMessage.data)
             // Check if data needs to be processed by long running job
             if (isLongRunningJob()) {
                 // For long-running tasks (10 seconds or more) use WorkManager.
@@ -57,10 +60,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         // Check if message contains a notification payload.
-        remoteMessage.notification?.let {
+        /**remoteMessage.notification?.let {
             Log.d(TAG, "Message Notification Body: ${it.body}")
-            it.body?.let { body -> sendNotification(body,it.title ?: "",remoteMessage.data["msg_data"] ?: "") }
-        }
+            it.body?.let { body -> sendNotification(remoteMessage.data) }
+        }**/
 
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
@@ -120,14 +123,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      *
      * @param messageBody FCM message body received.
      */
-    private fun sendNotification(messageBody: String,title: String = "FCM Message",msgData: String = "") {
+    private fun sendNotification(data: Map<String, String>) {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent.putExtra("from_notification", true)
-        intent.putExtra("NotificationTitle", title)
-        intent.putExtra("NotificationBody", messageBody)
-        intent.putExtra("NotificationMsgData", msgData)
+        intent.putExtra("NotificationTitle", data["title"] ?: "")
+        intent.putExtra("NotificationBody", data["body"] ?: "")
+        intent.putExtra("NotificationMsgType",data["msg_type"] ?: "")
+        intent.putExtra("NotificationMsgJumpUrl",data["msg_jump_url"] ?: "")
+        intent.putExtra("NotificationMsgData", data["msg_data"] ?: "")
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
@@ -136,13 +141,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val channelId = getString(R.string.default_notification_channel_id)
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        //val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(messageBody)
+            .setContentTitle(data["title"] ?: "")
+            .setContentText(data["body"] ?: "")
             .setAutoCancel(true)
-            .setSound(defaultSoundUri)
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -154,6 +159,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 "Channel human readable title",
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
+
+            channel.enableVibration(true)
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build())
+
+
             notificationManager.createNotificationChannel(channel)
         }
 

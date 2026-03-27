@@ -10,6 +10,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -17,12 +18,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.media.AudioAttributes
 import android.media.MediaScannerConnection
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -214,14 +217,14 @@ class MainActivity : AppCompatActivity() {
     private var isDownloading = false
     private var customDialog: Dialog? = null
     private var updateDownloadJob: kotlinx.coroutines.Job? = null
-    
+
     private var isAppInForeground = false
     private var pendingInstallApkUri: Uri? = null
     private val installPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (packageManager.canRequestPackageInstalls()) {
-                pendingInstallApkUri?.let { 
-                    installApk(it) 
+                pendingInstallApkUri?.let {
+                    installApk(it)
                     pendingInstallApkUri = null
                 }
             } else {
@@ -306,7 +309,7 @@ class MainActivity : AppCompatActivity() {
         intent?.data?.let { uri ->
             val urlStr = uri.toString()
             Toast.makeText(this, getString(R.string.received_external_web_call, urlStr), Toast.LENGTH_SHORT).show()
-            
+
             if (webView.progress == 100) {
                 val jsCode = "javascript:if(window.JSBridge && window.JSBridge.onDeepLink){window.JSBridge.onDeepLink('$urlStr');}"
                 webView.evaluateJavascript(jsCode, null)
@@ -685,8 +688,41 @@ class MainActivity : AppCompatActivity() {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", it["body"] ?: "")
                 jsonObj.put("NotificationContent", it["title"] ?: "")
-                jsonObj.put("MsgData", it["msg_data"] ?: "")
+                jsonObj.put("msg_type", it["msg_type"] ?: "")
+                val msgJumpUrl = it["msg_jump_url"] ?: ""
+                jsonObj.put("msg_jump_url", msgJumpUrl)
+                jsonObj.put("msg_data", it["msg_data"] ?: "")
                 Log.w("WebViewTest",jsonObj.toString())
+                when(it["msg_type"] ?: ""){
+                    "1" -> {
+                        webView.loadUrl(msgJumpUrl)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            runOnUiThread {
+                            if (splashView.isVisible) {
+                                    splashView.animate()
+                                        .alpha(0f)
+                                        .setDuration(400)
+                                        .withEndAction {
+                                            destroySplashWebView()
+                                        }
+                                        .start()
+                                }
+                            }
+                        },2500)
+                    }
+                    "2" -> {
+
+                    }
+                    "3" -> {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl))
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            this@MainActivity.startActivity(intent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
                 sendJsNative("getFCMData_callback", webView, jsonObj.toString())
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -697,14 +733,14 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val jsMessage = Gson().fromJson(message, JsBeanRequest::class.java)
                     if (jsMessage == null || jsMessage.methods.isNullOrEmpty()) return@collect
-                    
+
                     when (jsMessage.methods) {
                         js_requestPermission -> {
                             try {
                                 val permissionBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.PermissionBean::class.java)
                                 val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
                                 val requestedPerms = permissionBean?.permissions ?: if (!permissionBean?.permission.isNullOrEmpty()) listOf(permissionBean!!.permission!!) else emptyList()
-                                
+
                                 requestedPerms.forEach { perm ->
                                     when (perm.lowercase()) {
                                         "camera" -> permList.add(PermissionLists.getCameraPermission())
@@ -728,7 +764,7 @@ class MainActivity : AppCompatActivity() {
                                         "contacts" -> permList.add(PermissionLists.getReadContactsPermission())
                                     }
                                 }
-                                
+
                                 if (permList.isNotEmpty()) {
                                     PermissionHelper.checkPermission(
                                         this@MainActivity,
@@ -760,7 +796,7 @@ class MainActivity : AppCompatActivity() {
                                 val permissionBean = Gson().fromJson(jsMessage.paramObj, com.ganha.test.bean.PermissionBean::class.java)
                                 val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
                                 val requestedPerms = permissionBean?.permissions ?: if (!permissionBean?.permission.isNullOrEmpty()) listOf(permissionBean!!.permission!!) else emptyList()
-                                
+
                                 requestedPerms.forEach { perm ->
                                     when (perm.lowercase()) {
                                         "camera" -> permList.add(PermissionLists.getCameraPermission())
@@ -784,7 +820,7 @@ class MainActivity : AppCompatActivity() {
                                         "contacts" -> permList.add(PermissionLists.getReadContactsPermission())
                                     }
                                 }
-                                
+
                                 if (permList.isNotEmpty()) {
                                     val isGranted = com.hjq.permissions.XXPermissions.isGrantedPermissions(this@MainActivity, permList)
                                     val status = if (isGranted) "granted" else "denied"
@@ -1325,7 +1361,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        
+
         var finalUri = apkUri
         if (apkUri.scheme == "file") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -1339,7 +1375,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         intent.setDataAndType(finalUri, "application/vnd.android.package-archive")
         try {
             startActivity(intent)
@@ -1492,7 +1528,7 @@ class MainActivity : AppCompatActivity() {
         tvFileName = view.findViewById(R.id.tvFileName)
         progressBar = view.findViewById(R.id.progressBar)
         tvProgress = view.findViewById(R.id.tvProgress)
-        
+
         val btnCancel = view.findViewById<TextView>(R.id.btnCancel)
         btnCancel.isVisible = !isForceUpdate
 
@@ -1514,9 +1550,9 @@ class MainActivity : AppCompatActivity() {
         splash_webview?.onResume()
         webView.resumeTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
-        pendingInstallApkUri?.let { 
+        pendingInstallApkUri?.let {
             installApk(it)
-            pendingInstallApkUri = null 
+            pendingInstallApkUri = null
         }
         handleNotificationClick(intent)
     }
@@ -1781,7 +1817,7 @@ class MainActivity : AppCompatActivity() {
                         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = android.content.ClipData.newPlainText("label", shareText)
                         clipboard.setPrimaryClip(clip)
-                        
+
                         if (isMetaApp && isImageWithText) {
                             val appName = when (targetApp?.lowercase()) {
                                 "facebook" -> "Facebook"
@@ -1968,6 +2004,8 @@ class MainActivity : AppCompatActivity() {
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
+        intent.putExtra("NotificationMsgType","2")
+        intent.putExtra("NotificationMsgJumpUrl","https://www.baidu.com/")
         intent.putExtra("NotificationMsgData", "123")
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -1977,14 +2015,14 @@ class MainActivity : AppCompatActivity() {
         )
 
         val channelId = getString(R.string.default_notification_channel_id)
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        //val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
-            .setSound(defaultSoundUri)
             .setContentIntent(pendingIntent)
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -1993,8 +2031,16 @@ class MainActivity : AppCompatActivity() {
             val channel = NotificationChannel(
                 channelId,
                 "Channel human readable title",
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_HIGH,
             )
+
+            channel.enableVibration(true);
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build())
+
             notificationManager.createNotificationChannel(channel)
         }
 
@@ -2016,13 +2062,47 @@ class MainActivity : AppCompatActivity() {
             getIntent().removeExtra("from_notification")
             val title = intent.getStringExtra("NotificationTitle")
             val content = intent.getStringExtra("NotificationBody")
+            val msgType = intent.getStringExtra("NotificationMsgType")
+            val msgJumpUrl = intent.getStringExtra("NotificationMsgJumpUrl") ?: ""
             val msgData = intent.getStringExtra("NotificationMsgData")
             try {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", title)
                 jsonObj.put("NotificationContent", content)
-                jsonObj.put("MsgData", msgData)
+                jsonObj.put("msg_type", msgType)
+                jsonObj.put("msg_jump_url", msgJumpUrl)
+                jsonObj.put("msg_data", msgData)
                 Log.w("WebViewTest",jsonObj.toString())
+                when(msgType){
+                    "1" -> {
+                        webView.loadUrl(msgJumpUrl)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            runOnUiThread {
+                                if (splashView.isVisible) {
+                                    splashView.animate()
+                                        .alpha(0f)
+                                        .setDuration(400)
+                                        .withEndAction {
+                                            destroySplashWebView()
+                                        }
+                                        .start()
+                                }
+                            }
+                        },2500)
+                    }
+                    "2" -> {
+
+                    }
+                    "3" -> {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl))
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            this@MainActivity.startActivity(intent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
                 sendJsNative("clickNotificationBar_callback", webView, jsonObj.toString())
             } catch (e: Exception) {
                 e.printStackTrace()
