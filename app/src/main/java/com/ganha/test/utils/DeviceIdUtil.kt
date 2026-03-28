@@ -2,6 +2,7 @@ package com.ganha.test.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.MediaDrm
 import android.media.UnsupportedSchemeException
 import android.provider.Settings
@@ -11,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.util.UUID
+
 
 object DeviceIdUtil {
 
@@ -106,6 +108,22 @@ object DeviceIdUtil {
         } catch (e: Exception) {
             Log.e(TAG, "MD5 calculation failed", e)
             string.hashCode().toString()
+        }
+    }
+
+    /**
+     * 获取应用版本代码(递增的整数值)
+     * @param context 上下文对象
+     * @return 版本代码，获取失败返回-1
+     */
+    fun getVersionCode(context: Context): Int {
+        try {
+            val packageInfo = context.getPackageManager()
+                .getPackageInfo(context.getPackageName(), 0)
+            return packageInfo.versionCode
+        } catch (e: PackageManager.NameNotFoundException) {
+            Log.e(TAG, "获取版本代码失败", e)
+            return -1
         }
     }
 }

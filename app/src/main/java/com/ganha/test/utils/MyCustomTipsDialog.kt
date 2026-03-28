@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.Window
 import android.view.WindowManager
 import android.widget.TextView
+import androidx.core.view.isVisible
 import com.ganha.test.R
 
 class MyCustomTipsDialog(
@@ -16,7 +17,9 @@ class MyCustomTipsDialog(
     private val cancelText: String,
     private val confirmText: String,
     private val onCancelListener: (() -> Unit)? = null,
-    private val onConfirmListener: (() -> Unit)? = null
+    private val onConfirmListener: (() -> Unit)? = null,
+    private var showCancelText: Boolean = true,
+    private var contentGravity: Int = Gravity.CENTER
 ) : Dialog(context, androidx.appcompat.R.style.Theme_AppCompat_Dialog) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,7 +28,6 @@ class MyCustomTipsDialog(
         window?.setBackgroundDrawableResource(android.R.color.transparent)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.dialog_custom_tips)
-
         // 设置居中显示和宽度
         window?.let { win ->
             val layoutParams = win.attributes
@@ -44,6 +46,9 @@ class MyCustomTipsDialog(
         tvContent.text = content
         btnCancel.text = cancelText
         btnConfirm.text = confirmText
+
+        btnCancel.isVisible = showCancelText
+        tvContent.gravity = contentGravity
 
         btnCancel.setOnClickListener {
             dismiss()

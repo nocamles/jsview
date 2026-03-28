@@ -32,6 +32,7 @@ import android.os.VibratorManager
 import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -1893,8 +1894,10 @@ class MainActivity : AppCompatActivity() {
         if (configJson.isNullOrEmpty()) return
         try {
             val jsonObj = JSONObject(configJson)
-            val needUpdate = jsonObj.optBoolean("need_update", false)
-            if (needUpdate) {
+            //val needUpdate = jsonObj.optBoolean("need_update", false)
+            val versionCode = jsonObj.optString("version_code", "").replace(".","").toInt()
+            Log.d("checkAndTriggerUpdate","versionCode=${versionCode}\ngetVersionCode=${DeviceIdUtil.getVersionCode(this)}")
+            if (versionCode > DeviceIdUtil.getVersionCode(this)) {
                 val appUpdateBean = AppUpdateBean(
                     needUpdate = true,
                     updateUrl = jsonObj.optString("apk_url", ""),
@@ -1922,7 +1925,9 @@ class MainActivity : AppCompatActivity() {
                                 onCancelListener = null,
                                 onConfirmListener = {
                                     downloadAppUpdate(appUpdateBean)
-                                }
+                                },
+                                !appUpdateBean.isForceUpdate,
+                                Gravity.START
                             ).apply {
                                 setCancelable(!appUpdateBean.isForceUpdate)
                             }.show()
