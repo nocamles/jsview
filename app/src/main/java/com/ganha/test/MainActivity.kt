@@ -1177,20 +1177,40 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         js_clickNotificationBar -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                // Create channel to show notifications.
-                                val channelId = getString(R.string.default_notification_channel_id)
-                                val channelName = "TestCCC"
-                                val notificationManager = getSystemService(NotificationManager::class.java)
-                                notificationManager?.createNotificationChannel(
-                                    NotificationChannel(
-                                        channelId,
-                                        channelName,
-                                        NotificationManager.IMPORTANCE_LOW,
-                                    ),
-                                )
-                            }
-                            sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
+                            val perms = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                            perms.add(PermissionLists.getPostNotificationsPermission())
+                            PermissionHelper.checkPermission(
+                                this@MainActivity,
+                                perms,
+                                getString(R.string.need_get_per_notif),
+                                getString(R.string.go_to_settings),
+                                object : RequestCallback {
+                                    override fun onGranted() {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                            // Create channel to show notifications.
+                                            val channelId = getString(R.string.default_notification_channel_id)
+                                            val channelName = "TestCCC"
+                                            val notificationManager = getSystemService(NotificationManager::class.java)
+                                            notificationManager?.createNotificationChannel(
+                                                NotificationChannel(
+                                                    channelId,
+                                                    channelName,
+                                                    NotificationManager.IMPORTANCE_LOW,
+                                                ),
+                                            )
+                                        }
+                                        sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
+                                    }
+
+                                    override fun onDenied() {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            getString(R.string.permission_denied),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            )
                         }
                         js_loadErrorUrl -> {
                             try {
