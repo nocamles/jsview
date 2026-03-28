@@ -147,6 +147,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentTitle(data["title"] ?: "")
             .setContentText(data["body"] ?: "")
             .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
             .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
             .setContentIntent(pendingIntent)
 
@@ -157,14 +159,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 channelId,
                 "Channel human readable title",
-                NotificationManager.IMPORTANCE_DEFAULT,
+                NotificationManager.IMPORTANCE_HIGH,
             )
 
             channel.enableVibration(true)
+            channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
             channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build())
 
 

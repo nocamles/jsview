@@ -868,6 +868,11 @@ class MainActivity : AppCompatActivity() {
                                             }.show()
                                         }
                                     }
+                                } else {
+                                    val downloadDir = File(cacheDir, "downloadapk")
+                                    if (downloadDir.exists()) {
+                                        downloadDir.deleteRecursively()
+                                    }
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -1191,19 +1196,6 @@ class MainActivity : AppCompatActivity() {
                                 getString(R.string.go_to_settings),
                                 object : RequestCallback {
                                     override fun onGranted() {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                            // Create channel to show notifications.
-                                            val channelId = getString(R.string.default_notification_channel_id)
-                                            val channelName = "TestCCC"
-                                            val notificationManager = getSystemService(NotificationManager::class.java)
-                                            notificationManager?.createNotificationChannel(
-                                                NotificationChannel(
-                                                    channelId,
-                                                    channelName,
-                                                    NotificationManager.IMPORTANCE_LOW,
-                                                ),
-                                            )
-                                        }
                                         sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
                                     }
 
@@ -1948,6 +1940,11 @@ class MainActivity : AppCompatActivity() {
                     // 触发后清空配置，防止重复触发（如页面刷新）
                     apkOfflineConfigJson = null
                 }
+            } else {
+                val downloadDir = File(cacheDir, "downloadapk")
+                if (downloadDir.exists()) {
+                    downloadDir.deleteRecursively()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -2185,6 +2182,8 @@ class MainActivity : AppCompatActivity() {
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
             .setContentIntent(pendingIntent)
             .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
 
@@ -2199,10 +2198,11 @@ class MainActivity : AppCompatActivity() {
             )
 
             channel.enableVibration(true);
+            channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
             channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build())
 
             notificationManager.createNotificationChannel(channel)
