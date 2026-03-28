@@ -572,13 +572,6 @@ class MainActivity : AppCompatActivity() {
 
                 if (splashView.isVisible) {
                     sendEmptyJsNative("finishAnimationFast", splash_webview)
-
-                    splashView.postDelayed({
-                        if (splashView.isVisible) {
-                            android.util.Log.e("WebViewTest", "JS未按时响应，触发兜底强制移除开屏页")
-                            sendEmptyJsNative("finishAnimationFast", splash_webview)
-                        }
-                    }, 1000)
                 }
 
                 pendingDeepLink?.let { deepLinkUrl ->
@@ -1582,7 +1575,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showErrorView(url: String? = null) {
-        destroySplashWebView()
+        if (splashView.isVisible) {
+            sendEmptyJsNative("finishAnimationFast", splash_webview)
+            splashView.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    destroySplashWebView()
+                }
+                .start()
+        } else {
+            destroySplashWebView()
+        }
         if (!url.isNullOrEmpty()) {
             failedUrl = url
         }

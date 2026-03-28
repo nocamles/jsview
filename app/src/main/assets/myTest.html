@@ -618,6 +618,10 @@
             resultElement.style.display = 'block';
         }
 
+        window.addEventListener('load', function() {
+            callNative('removeSplashScreen');
+        });
+
     </script>
 </body>
 </html>
