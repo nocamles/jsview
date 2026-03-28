@@ -73,6 +73,7 @@ import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
 import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBean.Companion.js_getPushToken
 import com.ganha.test.bean.JsBean.Companion.js_goBack
+import com.ganha.test.bean.JsBean.Companion.js_gotoH5BaseUrl
 import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
 import com.ganha.test.bean.JsBean.Companion.js_loadErrorUrl
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
@@ -170,7 +171,7 @@ class MainActivity : AppCompatActivity() {
                 contentResolver.openFileDescriptor(uri, "r")?.use {
                     fileSize = it.statSize
                 }
-                if (fileSize <= 500 * 1024) {
+                if (fileSize <= 400 * 1024) {
                     return@withContext uri
                 }
 
@@ -184,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                 var outputStream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
 
-                while (outputStream.toByteArray().size > 500 * 1024 && quality > 10) {
+                while (outputStream.toByteArray().size > 400 * 1024 && quality > 10) {
                     quality -= 10
                     outputStream.reset()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
@@ -221,6 +222,9 @@ class MainActivity : AppCompatActivity() {
     private var isDownloading = false
     private var customDialog: Dialog? = null
     private var updateDownloadJob: kotlinx.coroutines.Job? = null
+    private var h5BaseUrl : String = ""
+
+    private var hasRequestedNotificationPermission = false
 
     private var isAppInForeground = false
     private var pendingInstallApkUri: Uri? = null
@@ -279,29 +283,6 @@ class MainActivity : AppCompatActivity() {
         initFbConfig()
 
         handleDeepLink(intent)
-
-        try {
-            val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
-            permList.add(PermissionLists.getPostNotificationsPermission())
-            if (permList.isNotEmpty()) {
-                PermissionHelper.checkPermission(
-                    this@MainActivity,
-                    permList,
-                    getString(R.string.need_get_per_notif),
-                    getString(R.string.go_to_settings),
-                    object : RequestCallback {
-                        override fun onGranted() {
-
-                        }
-                        override fun onDenied() {
-
-                        }
-                    }
-                )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -569,6 +550,28 @@ class MainActivity : AppCompatActivity() {
                 if (url != null && !url.contains("net_error.html") && url != "about:blank") {
                     isPageLoadedSuccessfully = true
                     checkAndTriggerUpdate(apkOfflineConfigJson)
+                    
+                    if (!hasRequestedNotificationPermission) {
+                        hasRequestedNotificationPermission = true
+                        try {
+                            val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                            permList.add(PermissionLists.getPostNotificationsPermission())
+                            if (permList.isNotEmpty()) {
+                                PermissionHelper.checkPermission(
+                                    this@MainActivity,
+                                    permList,
+                                    getString(R.string.need_get_per_notif),
+                                    getString(R.string.go_to_settings),
+                                    object : RequestCallback {
+                                        override fun onGranted() {}
+                                        override fun onDenied() {}
+                                    }
+                                )
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
                 }
 
                 if (splashView.isVisible) {
@@ -970,7 +973,7 @@ class MainActivity : AppCompatActivity() {
                         js_vibrate -> {
                             try {
                                 val vibrateBean = Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java) ?: VibrateBean()
-                                val duration = vibrateBean.duration
+                                val duration = vibrateBean.duration ?: 50L
 
                                 if (duration <= 0L) {
                                     return@collect
@@ -993,7 +996,7 @@ class MainActivity : AppCompatActivity() {
                                             VibrationEffect.DEFAULT_AMPLITUDE
                                         }
 
-                                        vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude))
+                                        vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude?:100))
                                     } else {
                                         // Android 8.0 以下版本
                                         @Suppress("DEPRECATION")
@@ -1254,6 +1257,14 @@ class MainActivity : AppCompatActivity() {
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
+                            }
+                        }
+
+                        js_gotoH5BaseUrl -> {
+                            if(!h5BaseUrl.isNullOrEmpty())
+                                webView.loadUrl(h5BaseUrl)
+                            else{
+                                Toast.makeText(this@MainActivity,"没有获取到H5BaseUrl",Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -1864,7 +1875,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
 
         val h5OfflineConfig = remoteConfig["h5_offline_config"].asString()
-        val h5BaseUrl = remoteConfig["h5_base_url"].asString()
+        h5BaseUrl = remoteConfig["h5_base_url"].asString()
         Log.d(TAG,"h5_offline_config:$h5OfflineConfig")
         Log.d(TAG,"h5_base_url:$h5BaseUrl")
 
