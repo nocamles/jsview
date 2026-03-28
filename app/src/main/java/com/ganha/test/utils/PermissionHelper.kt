@@ -46,51 +46,60 @@ object PermissionHelper {
             return
         }
 
-        // 2. 弹窗提示用户权限说明，确认后发起权限请求
-        activity.showTipsDialog(
-            title = activity.getString(R.string.permission_request),
-            content = explainReason,
-            cancelText = activity.getString(R.string.cancel),
-            confirmText = activity.getString(R.string.go_to_authorize),
-            onCancelListener = {
-                // 用户拒绝弹窗，回调失败
-                callBack.onDenied()
-            },
-            onConfirmListener = {
-                // 发起权限请求
-                XXPermissions.with(activity)
-                    .permissions(permissions)
-                    .request(object : OnPermissionCallback {
-                        override fun onResult(
-                            grantedList: List<IPermission?>,
-                            deniedList: List<IPermission?>
-                        ) {
-                            if (deniedList.isEmpty()) {
-                                callBack.onGranted()
+        val requestAction = {
+            // 发起权限请求
+            XXPermissions.with(activity)
+                .permissions(permissions)
+                .request(object : OnPermissionCallback {
+                    override fun onResult(
+                        grantedList: List<IPermission?>,
+                        deniedList: List<IPermission?>
+                    ) {
+                        if (deniedList.isEmpty()) {
+                            callBack.onGranted()
+                        } else {
+                            val doNotAskAgain =
+                                XXPermissions.isDoNotAskAgainPermissions(activity, deniedList)
+                            if (doNotAskAgain) {
+                                showSettingDialog(
+                                    activity,
+                                    deniedList,
+                                    forwardtoSettingReason,
+                                    callBack
+                                )
                             } else {
-                                val doNotAskAgain =
-                                    XXPermissions.isDoNotAskAgainPermissions(activity, deniedList)
-                                if (doNotAskAgain) {
-                                    showSettingDialog(
-                                        activity,
-                                        deniedList,
-                                        forwardtoSettingReason,
-                                        callBack
-                                    )
-                                } else {
-                                    showExplainDialog(
-                                        activity,
-                                        permissions,
-                                        explainReason,
-                                        forwardtoSettingReason,
-                                        callBack
-                                    )
-                                }
+                                showExplainDialog(
+                                    activity,
+                                    permissions,
+                                    explainReason,
+                                    forwardtoSettingReason,
+                                    callBack
+                                )
                             }
                         }
-                    })
-            }
-        )
+                    }
+                })
+        }
+
+        // 2. 检测如果权限可以默认获取（没有被永久拒绝），则直接申请
+        if (!XXPermissions.isDoNotAskAgainPermissions(activity, permissions)) {
+            requestAction()
+        } else {
+            // 3. 弹窗提示用户权限说明，确认后发起权限请求
+            activity.showTipsDialog(
+                title = activity.getString(R.string.permission_request),
+                content = explainReason,
+                cancelText = activity.getString(R.string.cancel),
+                confirmText = activity.getString(R.string.go_to_authorize),
+                onCancelListener = {
+                    // 用户拒绝弹窗，回调失败
+                    callBack.onDenied()
+                },
+                onConfirmListener = {
+                    requestAction()
+                }
+            )
+        }
     }
 
     /**

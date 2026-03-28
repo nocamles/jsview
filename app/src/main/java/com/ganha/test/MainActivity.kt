@@ -356,6 +356,7 @@ class MainActivity : AppCompatActivity() {
     private fun initWebView() {
         splash_webview?.setBackgroundColor(Color.TRANSPARENT)
         splash_webview?.settings?.javaScriptEnabled = true
+        splash_webview?.settings?.textZoom = 100
         splash_webview?.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
