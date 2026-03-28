@@ -225,10 +225,11 @@ class MainActivity : AppCompatActivity() {
     private var pendingInstallApkUri: Uri? = null
     private val installPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val uri = pendingInstallApkUri
+            pendingInstallApkUri = null
             if (packageManager.canRequestPackageInstalls()) {
-                pendingInstallApkUri?.let {
+                uri?.let {
                     installApk(it)
-                    pendingInstallApkUri = null
                 }
             } else {
                 Toast.makeText(this, getString(R.string.permission_install_denied), Toast.LENGTH_SHORT).show()
