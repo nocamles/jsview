@@ -23,6 +23,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -57,6 +58,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -207,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private var splash_webview: WebView? = null
+    //private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
     private var pendingDeepLink: String? = null
@@ -259,10 +261,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         window.statusBarColor = Color.TRANSPARENT
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
 
         webView = findViewById(R.id.webView)
-        splash_webview = findViewById(R.id.webview_Splash)
+        //splash_webview = findViewById(R.id.webview_Splash)
         splashView = findViewById(R.id.splashView)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -277,7 +279,7 @@ class MainActivity : AppCompatActivity() {
         initWebView()
         setupBackPressed()
         checkAndClearDownloadCache()
-        splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
+        //splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
         webView.loadUrl("file:///android_asset/myTest.html")
 
         firebaseAnalytics = Firebase.analytics
@@ -285,6 +287,7 @@ class MainActivity : AppCompatActivity() {
         initFbConfig()
 
         handleDeepLink(intent)
+        countDownTimer.start()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -356,7 +359,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView() {
-        splash_webview?.setBackgroundColor(Color.TRANSPARENT)
+        /**splash_webview?.setBackgroundColor(Color.TRANSPARENT)
         splash_webview?.settings?.javaScriptEnabled = true
         splash_webview?.settings?.textZoom = 100
         splash_webview?.webViewClient = object : WebViewClient() {
@@ -364,7 +367,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
 
             }
-        }
+        }**/
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -578,7 +581,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (splashView.isVisible) {
-                    sendEmptyJsNative("finishAnimationFast", splash_webview)
+                    //sendEmptyJsNative("finishAnimationFast", splash_webview)
                 }
 
                 pendingDeepLink?.let { deepLinkUrl ->
@@ -664,7 +667,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(JsBean(viewModel), "App")
-        splash_webview?.addJavascriptInterface(JsBean(viewModel), "App")
+        //splash_webview?.addJavascriptInterface(JsBean(viewModel), "App")
     }
 
     private fun setupBackPressed() {
@@ -915,6 +918,7 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         js_removeSplashScreen -> {
+                            countDownTimer.cancel()
                             runOnUiThread {
                                 if (splashView.visibility == View.VISIBLE) {
                                     splashView.animate()
@@ -1623,7 +1627,7 @@ class MainActivity : AppCompatActivity() {
 
     fun showErrorView(url: String? = null) {
         if (splashView.isVisible) {
-            sendEmptyJsNative("finishAnimationFast", splash_webview)
+            //sendEmptyJsNative("finishAnimationFast", splash_webview)
             splashView.animate()
                 .alpha(0f)
                 .setDuration(400)
@@ -1646,7 +1650,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         isAppInForeground = true
         webView.onResume()
-        splash_webview?.onResume()
+        //splash_webview?.onResume()
         webView.resumeTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
         Toast.makeText(this, "已切换到前台", Toast.LENGTH_SHORT).show()
@@ -1662,7 +1666,7 @@ class MainActivity : AppCompatActivity() {
         isAppInForeground = false
         // 绑定生命周期：后台锁屏时必须调用 onPause() 解决幽灵声音 Bug
         webView.onPause()
-        splash_webview?.onPause()
+        //splash_webview?.onPause()
         webView.pauseTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"background\"}")
         Toast.makeText(this, "已切换到后台", Toast.LENGTH_SHORT).show()
@@ -1673,7 +1677,8 @@ class MainActivity : AppCompatActivity() {
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.clearHistory()
         webView.destroy()
-        splash_webview?.destroy()
+        //splash_webview?.destroy()
+        countDownTimer.cancel()
         super.onDestroy()
     }
 
@@ -1681,7 +1686,7 @@ class MainActivity : AppCompatActivity() {
      * 销毁开屏页
      */
     private fun destroySplashWebView() {
-        if (splash_webview != null) {
+        /**if (splash_webview != null) {
             splashView.visibility = View.GONE
 
             val parent = splash_webview?.parent as? ViewGroup
@@ -1695,7 +1700,7 @@ class MainActivity : AppCompatActivity() {
             splash_webview?.clearView() // 针对老版本API
             splash_webview?.removeAllViews()
             splash_webview?.loadUrl("about:blank")
-        }
+        }**/
     }
 
     private fun showSaveImageDialog(imageUrl: String) {
@@ -2235,7 +2240,7 @@ class MainActivity : AppCompatActivity() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
             .setContentIntent(pendingIntent)
-            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.soud1))
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -2249,7 +2254,7 @@ class MainActivity : AppCompatActivity() {
 
             channel.enableVibration(true);
             channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
-            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud1),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
@@ -2279,6 +2284,7 @@ class MainActivity : AppCompatActivity() {
             val msgType = intent.getStringExtra("NotificationMsgType")
             val msgJumpUrl = intent.getStringExtra("NotificationMsgJumpUrl") ?: ""
             val msgData = intent.getStringExtra("NotificationMsgData")
+            val soundType = intent.getStringExtra("NotificationMsgSoudType")
             try {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", title)
@@ -2321,6 +2327,37 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private val countDownTimer by lazy {
+        object : CountDownTimer(8 * 1000L, 1000) {
+
+            override fun onTick(millisUntilFinished: Long) {
+                //模拟后端调用了js removeSplashScreen()，后续上线这里代码全删掉
+                if(millisUntilFinished / 1000 == 3L){
+                    cancel()
+                    runOnUiThread {
+                        if (splashView.visibility == View.VISIBLE) {
+                            splashView.animate()
+                                .alpha(0f)
+                                .setDuration(400)
+                                .withEndAction {
+                                    destroySplashWebView()
+                                }
+                                .start()
+                        }
+                    }
+
+                }
+            }
+
+            override fun onFinish() {
+                runOnUiThread {
+                    showErrorView()
+                }
+            }
+
         }
     }
 }

@@ -17,6 +17,7 @@ import com.ganha.test.R
 import com.ganha.test.utils.FlowEventBus
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlin.random.Random
 
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
@@ -133,12 +134,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         intent.putExtra("NotificationMsgType",data["msg_type"] ?: "")
         intent.putExtra("NotificationMsgJumpUrl",data["msg_jump_url"] ?: "")
         intent.putExtra("NotificationMsgData", data["msg_data"] ?: "")
+        val msgSoudType = data["msg_soud_type"] ?: ""
+        intent.putExtra("NotificationMsgSoudType", msgSoudType)
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        var soudRes = R.raw.soud1
+        when(msgSoudType){
+            "1" -> soudRes = R.raw.soud1
+            "2" -> soudRes = R.raw.soud2
+            "3" -> soudRes = R.raw.soud_coins
+            "4" -> soudRes = R.raw.soud_samba
+        }
 
         val channelId = getString(R.string.default_notification_channel_id)
         //val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -149,7 +160,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
-            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + soudRes))
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -164,7 +175,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             channel.enableVibration(true)
             channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
-            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + soudRes),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
@@ -174,7 +185,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val notificationId = 0
+
+        val timestamp = System.currentTimeMillis()
+        val randomNumber: Int = Random.nextInt(99999) // 生成一个0到99999之间的随机数
+        val notificationId = (timestamp xor randomNumber.toLong()).toInt() // 使用XOR操作符混合时间戳和随机数
+
         notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
