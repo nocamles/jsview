@@ -137,4 +137,47 @@ object DeviceInfoHelper {
         }
     }
 
+    /**
+     * 7. 获取手机品牌
+     */
+    fun getDeviceBrand(): String = Build.BRAND ?: ""
+
+    /**
+     * 8. 获取手机型号
+     */
+    fun getDeviceModel(): String = Build.MODEL ?: ""
+
+    /**
+     * 9. 获取系统版本
+     */
+    fun getOsVersion(): String = Build.VERSION.RELEASE ?: ""
+
+    /**
+     * 10. 获取网络类型
+     */
+    fun getNetworkType(context: Context): String {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return "NONE"
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return "NONE"
+            return when {
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WIFI"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "CELLULAR"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ETHERNET"
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "VPN"
+                else -> "OTHER"
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            val networkInfo = connectivityManager.activeNetworkInfo ?: return "NONE"
+            @Suppress("DEPRECATION")
+            return when (networkInfo.type) {
+                ConnectivityManager.TYPE_WIFI -> "WIFI"
+                ConnectivityManager.TYPE_MOBILE -> "CELLULAR"
+                ConnectivityManager.TYPE_ETHERNET -> "ETHERNET"
+                ConnectivityManager.TYPE_VPN -> "VPN"
+                else -> "OTHER"
+            }
+        }
+    }
 }

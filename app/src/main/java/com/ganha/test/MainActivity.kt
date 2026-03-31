@@ -30,6 +30,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
+import android.provider.Telephony
 import android.util.Base64
 import android.util.Log
 import android.view.Gravity
@@ -267,6 +268,7 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             statusBarHeight = systemBars.top
+            navBarHeight = systemBars.bottom
             v.setPadding(0, 0, 0, systemBars.bottom)
             insets
         }
@@ -1120,7 +1122,13 @@ class MainActivity : AppCompatActivity() {
                                 var versionCode = 0
                                 var versionName = ""
                                 var packName = packageName
-                                
+                                var gaid = ""
+                                var androidId = ""
+                                var device_brand = ""
+                                var device_model = ""
+                                var os_version = ""
+                                var network_type = ""
+
                                 try {
                                     isEmulator = DeviceInfoHelper.isEmulator()
                                     isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
@@ -1131,6 +1139,13 @@ class MainActivity : AppCompatActivity() {
                                     simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
                                     deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
                                     simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
+
+                                    gaid = DeviceIdUtil.getGaid(this@MainActivity) ?: ""
+                                    androidId = DeviceIdUtil.getAndroidId(this@MainActivity) ?: ""
+                                    device_brand = DeviceInfoHelper.getDeviceBrand()
+                                    device_model = DeviceInfoHelper.getDeviceModel()
+                                    os_version = DeviceInfoHelper.getOsVersion()
+                                    network_type = DeviceInfoHelper.getNetworkType(this@MainActivity)
 
                                     val packageInfo = packageManager.getPackageInfo(packageName, 0)
                                     versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -1156,7 +1171,14 @@ class MainActivity : AppCompatActivity() {
                                     versionCode = versionCode,
                                     versionName = versionName,
                                     packageName = packName,
-                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity)
+                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity),
+                                    navigationBarHeight = navBarHeight.toH5Value(this@MainActivity),
+                                    androidId = androidId,
+                                    gaid = gaid,
+                                    device_brand = device_brand,
+                                    device_model = device_model,
+                                    os_version = os_version,
+                                    network_type = network_type
                                 )
                                 val jsonStr = Gson().toJson(appInfo)
                                 withContext(Dispatchers.Main) {
@@ -1966,8 +1988,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             val targetApp = shareBean.targetApp ?: shareBean.platform
+            val rawPhone = shareBean.phone ?: shareBean.number ?: ""
+            // 号码清洗：只保留数字，适配巴西南美等国际区号开头格式
+            val cleanPhone = rawPhone.replace(Regex("\\D"), "")
+            
             val isSpecificApp = !targetApp.isNullOrEmpty()
             val isSms = targetApp?.lowercase() == "sms"
+            val isWhatsApp = targetApp?.lowercase() == "whatsapp"
             val isMetaApp = targetApp?.lowercase() in listOf("facebook", "messenger", "instagram", "ins")
             val isImageWithText = imageUri != null && shareText.isNotEmpty()
 
@@ -1994,29 +2021,48 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // SMS短信按照主流软件单独处理
+                // SMS短信处理
                 if (isSms) {
+                    val defaultSmsPackage = Telephony.Sms.getDefaultSmsPackage(this@MainActivity)
                     val intent = if (imageUri != null) {
+                        // 带图片的短信 (MMS)
                         Intent(Intent.ACTION_SEND).apply {
                             type = "image/*"
                             putExtra(Intent.EXTRA_STREAM, imageUri)
                             if (shareText.isNotEmpty()) {
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                             }
+                            if (cleanPhone.isNotEmpty()) {
+                                putExtra("address", cleanPhone)
+                            }
+                            // 动态设置默认短信应用包名
+                            if (!defaultSmsPackage.isNullOrEmpty()) {
+                                setPackage(defaultSmsPackage)
+                            }
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                     } else {
+                        // 纯文本短信
                         Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("smsto:")
+                            data = Uri.parse("smsto:$cleanPhone")
                             if (shareText.isNotEmpty()) {
                                 putExtra("sms_body", shareText)
+                            }
+                            if (!defaultSmsPackage.isNullOrEmpty()) {
+                                setPackage(defaultSmsPackage)
                             }
                         }
                     }
                     try {
                         startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, getString(R.string.sms_app_not_found), Toast.LENGTH_SHORT).show()
+                        // 兜底：如果设置包名失败，尝试不设包名再次启动
+                        try {
+                            intent.setPackage(null)
+                            startActivity(intent)
+                        } catch (e2: Exception) {
+                            Toast.makeText(this@MainActivity, getString(R.string.sms_app_not_found), Toast.LENGTH_SHORT).show()
+                        }
                     }
                     return@withContext
                 }
@@ -2025,7 +2071,6 @@ class MainActivity : AppCompatActivity() {
                     if (imageUri != null) {
                         type = "image/*"
                         putExtra(Intent.EXTRA_STREAM, imageUri)
-                        // Meta系如果图文混合，只能带图片过去，不要加 EXTRA_TEXT
                         if (shareText.isNotEmpty() && !isMetaApp) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
@@ -2035,6 +2080,11 @@ class MainActivity : AppCompatActivity() {
                         if (shareText.isNotEmpty()) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
+                    }
+                    
+                    // WhatsApp 使用 JID 实现定向图文分享
+                    if (isWhatsApp && cleanPhone.isNotEmpty()) {
+                        putExtra("jid", "$cleanPhone@s.whatsapp.net")
                     }
                 }
 

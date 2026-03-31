@@ -40,7 +40,7 @@ object DeviceIdUtil {
      * 获取 Google Advertising ID (GAID)
      * 需在子线程运行
      */
-    private fun getGaid(context: Context): String? {
+    fun getGaid(context: Context): String? {
         return try {
             val adInfo = AdvertisingIdClient.getAdvertisingIdInfo(context.applicationContext)
             adInfo.id
@@ -54,7 +54,7 @@ object DeviceIdUtil {
      * 获取 Android ID
      */
     @SuppressLint("HardwareIds")
-    private fun getAndroidId(context: Context): String? {
+    fun getAndroidId(context: Context): String? {
         return try {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         } catch (e: Exception) {
