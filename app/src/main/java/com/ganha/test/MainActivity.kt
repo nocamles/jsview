@@ -2073,28 +2073,61 @@ class MainActivity : AppCompatActivity() {
                     return@withContext
                 }
 
-                // WhatsApp定向分享处理 (针对纯文本+手机号)
-                if (isWhatsApp && cleanPhone.isNotEmpty() && imageUri == null) {
-                    val whatsappUri = Uri.parse("whatsapp://send?phone=$cleanPhone&text=${Uri.encode(shareText)}")
-                    val whatsappIntent = Intent(Intent.ACTION_VIEW, whatsappUri)
-
-                    val targetPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
-                    var packageToUse: String? = null
-                    for (pkg in targetPackages) {
-                        if (isPackageInstalled(pkg)) {
-                            packageToUse = pkg
-                            break
+                // WhatsApp定向分享处理
+                if (isWhatsApp && !cleanPhone.isNullOrEmpty()) {
+                    if (imageUri != null) {
+                        // WhatsApp 定向图文分享：使用 ACTION_SEND + jid
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/*"
+                            putExtra(Intent.EXTRA_STREAM, imageUri)
+                            if (shareText.isNotEmpty()) {
+                                putExtra(Intent.EXTRA_TEXT, shareText) // 图片的Caption
+                            }
+                            putExtra("jid", "$cleanPhone@s.whatsapp.net")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                    }
-                    if (packageToUse != null) {
-                        whatsappIntent.setPackage(packageToUse)
-                    }
+                        
+                        val targetPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
+                        var packageToUse: String? = null
+                        for (pkg in targetPackages) {
+                            if (isPackageInstalled(pkg)) {
+                                packageToUse = pkg
+                                break
+                            }
+                        }
+                        if (packageToUse != null) {
+                            intent.setPackage(packageToUse)
+                        }
+                        
+                        try {
+                            startActivity(intent)
+                            return@withContext
+                        } catch (e: Exception) {
+                            // 失败则降级
+                        }
+                    } else {
+                        // WhatsApp 定向纯文本分享：使用 whatsapp://send
+                        val whatsappUri = Uri.parse("whatsapp://send?phone=$cleanPhone&text=${Uri.encode(shareText)}")
+                        val whatsappIntent = Intent(Intent.ACTION_VIEW, whatsappUri)
 
-                    try {
-                        startActivity(whatsappIntent)
-                        return@withContext
-                    } catch (e: Exception) {
-                        // 失败则降级到通用分享逻辑
+                        val targetPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
+                        var packageToUse: String? = null
+                        for (pkg in targetPackages) {
+                            if (isPackageInstalled(pkg)) {
+                                packageToUse = pkg
+                                break
+                            }
+                        }
+                        if (packageToUse != null) {
+                            whatsappIntent.setPackage(packageToUse)
+                        }
+
+                        try {
+                            startActivity(whatsappIntent)
+                            return@withContext
+                        } catch (e: Exception) {
+                            // 失败则降级
+                        }
                     }
                 }
 
@@ -2102,6 +2135,7 @@ class MainActivity : AppCompatActivity() {
                     if (imageUri != null) {
                         type = "image/*"
                         putExtra(Intent.EXTRA_STREAM, imageUri)
+                        // 非 Meta 类 App（如 WhatsApp）支持 EXTRA_TEXT 作为图片 Caption
                         if (shareText.isNotEmpty() && !isMetaApp) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
@@ -2113,8 +2147,8 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     
-                    // WhatsApp 使用 JID 实现定向图文分享
-                    if (isWhatsApp && cleanPhone.isNotEmpty()) {
+                    // WhatsApp 通用图文分享（无号码时）
+                    if (isWhatsApp && !cleanPhone.isNullOrEmpty()) {
                         putExtra("jid", "$cleanPhone@s.whatsapp.net")
                     }
                 }
