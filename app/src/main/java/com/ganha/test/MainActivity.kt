@@ -1661,7 +1661,7 @@ class MainActivity : AppCompatActivity() {
             installApk(it)
             pendingInstallApkUri = null
         }
-        handleNotificationClick(intent)
+        //handleNotificationClick(intent)
     }
 
     override fun onPause() {
