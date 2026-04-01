@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             statusBarHeight = systemBars.top
             navBarHeight = systemBars.bottom
-            v.setPadding(0, 0, 0, systemBars.bottom)
+            v.setPadding(0, systemBars.top, 0, systemBars.bottom)
             insets
         }
 
@@ -1178,8 +1178,6 @@ class MainActivity : AppCompatActivity() {
                                     versionCode = versionCode,
                                     versionName = versionName,
                                     packageName = packName,
-                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity),
-                                    navigationBarHeight = navBarHeight.toH5Value(this@MainActivity),
                                     androidId = androidId,
                                     gaid = gaid,
                                     device_brand = device_brand,

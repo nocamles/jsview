@@ -294,11 +294,13 @@
         function testShare() {
             const text = document.getElementById('shareContent').value;
             const imageUrl = document.getElementById('shareImageUrl').value;
+            const phone = document.getElementById('sharePhone').value;
             const platform = document.getElementById('shareTargetApp').value;
 
             callNative('shareTo', {
                 text: text,
                 image_url: imageUrl,
+                phone: phone,
                 platform: platform
             });
         }

@@ -12,8 +12,6 @@ data class AppinfoBean(
     val versionCode: Int = 0,
     val versionName: String = "",
     val packageName: String = "",
-    val statusBarHeight: String = "",
-    val navigationBarHeight: String = "",
     val androidId: String = "",
     val gaid: String = "", //google广告ID
     val device_brand: String = "", //手机品牌
