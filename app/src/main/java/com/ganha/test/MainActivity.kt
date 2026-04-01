@@ -2073,6 +2073,31 @@ class MainActivity : AppCompatActivity() {
                     return@withContext
                 }
 
+                // WhatsApp定向分享处理 (针对纯文本+手机号)
+                if (isWhatsApp && cleanPhone.isNotEmpty() && imageUri == null) {
+                    val whatsappUri = Uri.parse("whatsapp://send?phone=$cleanPhone&text=${Uri.encode(shareText)}")
+                    val whatsappIntent = Intent(Intent.ACTION_VIEW, whatsappUri)
+
+                    val targetPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
+                    var packageToUse: String? = null
+                    for (pkg in targetPackages) {
+                        if (isPackageInstalled(pkg)) {
+                            packageToUse = pkg
+                            break
+                        }
+                    }
+                    if (packageToUse != null) {
+                        whatsappIntent.setPackage(packageToUse)
+                    }
+
+                    try {
+                        startActivity(whatsappIntent)
+                        return@withContext
+                    } catch (e: Exception) {
+                        // 失败则降级到通用分享逻辑
+                    }
+                }
+
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     if (imageUri != null) {
                         type = "image/*"
@@ -2102,6 +2127,7 @@ class MainActivity : AppCompatActivity() {
                         "instagram", "ins" -> listOf("com.instagram.android")
                         "tiktok" -> listOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill")
                         "kwai" -> listOf("com.kwai.video", "com.smile.gifmaker")
+                        "telegram" -> listOf("org.telegram.messenger", "org.thunderdog.challegram")
                         else -> emptyList()
                     }
 
