@@ -15,8 +15,8 @@ android {
         applicationId "com.gamego.ganha"
         minSdk 24
         targetSdk 36
-        versionCode 109
-        versionName "1.0.9"
+        versionCode 110
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -90,6 +90,8 @@ dependencies {
     
     // VasDolly helper library
     implementation 'com.tencent.vasdolly:helper:3.0.6'
+
+    implementation 'com.airbnb.android:lottie:6.3.0'
 }
 
 channel {

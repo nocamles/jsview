@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
         setupBackPressed()
         checkAndClearDownloadCache()
         //splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
-        webView.loadUrl("file:///android_asset/myTest.html")
+        //webView.loadUrl("file:///android_asset/myTest.html")
 
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
@@ -1899,6 +1899,7 @@ class MainActivity : AppCompatActivity() {
         h5BaseUrl = remoteConfig["h5_base_url"].asString()
         Log.d(TAG,"h5_offline_config:$h5OfflineConfig")
         Log.d(TAG,"h5_base_url:$h5BaseUrl")
+        webView.loadUrl(h5BaseUrl)
 
         if (h5OfflineConfig.isNotEmpty()) {
             try {
@@ -2358,7 +2359,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTick(millisUntilFinished: Long) {
                 //模拟后端调用了js removeSplashScreen()，后续上线这里代码全删掉
-                if(millisUntilFinished / 1000 == 3L){
+                /**if(millisUntilFinished / 1000 == 3L){
                     cancel()
                     runOnUiThread {
                         if (splashView.visibility == View.VISIBLE) {
@@ -2372,7 +2373,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                }
+                }**/
             }
 
             override fun onFinish() {

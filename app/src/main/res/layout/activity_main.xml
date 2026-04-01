@@ -55,6 +55,19 @@
             android:layout_height="wrap_content"
             android:src="@mipmap/ic_splash_4"/>
 
+        <com.airbnb.lottie.LottieAnimationView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="30dp"
+            android:layout_marginBottom="60dp"
+            app:lottie_autoPlay="true"
+            app:lottie_fileName="splash.json"
+            app:lottie_loop="true"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+
         <!-- Using app icon as logo -->
     </androidx.constraintlayout.widget.ConstraintLayout>
 
