@@ -287,13 +287,16 @@ class MainActivity : AppCompatActivity() {
         initFbConfig()
 
         handleDeepLink(intent)
+        handleNotificationClick(intent)
         countDownTimer.start()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        Log.d("aike","onNewIntent")
         setIntent(intent)
         handleDeepLink(intent)
+        handleNotificationClick(intent)
     }
 
     private fun handleDeepLink(intent: Intent?) {
@@ -2216,7 +2219,7 @@ class MainActivity : AppCompatActivity() {
     private fun sendNotification(messageBody: String,title: String = "FCM Message") {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
@@ -2237,8 +2240,8 @@ class MainActivity : AppCompatActivity() {
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
             .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.soud1))
 
@@ -2270,10 +2273,6 @@ class MainActivity : AppCompatActivity() {
         notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
-    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
-        super.onNewIntent(intent, caller)
-        handleNotificationClick(intent)
-    }
 
     private fun handleNotificationClick(intent: Intent){
         if (intent.getBooleanExtra("from_notification", false)) {

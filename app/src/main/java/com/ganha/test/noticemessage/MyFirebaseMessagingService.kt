@@ -127,7 +127,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun sendNotification(data: Map<String, String>) {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", data["title"] ?: "")
         intent.putExtra("NotificationBody", data["body"] ?: "")
@@ -158,8 +158,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentTitle(data["title"] ?: "")
             .setContentText(data["body"] ?: "")
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_VIBRATE)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + soudRes))
             .setContentIntent(pendingIntent)
 
