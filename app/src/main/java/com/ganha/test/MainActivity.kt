@@ -131,6 +131,8 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URISyntaxException
 import java.net.URL
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
@@ -213,6 +215,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var splashView: View
 
     private var pendingDeepLink: String? = null
+    private var pendingNotificationData: String? = null
     private var backPressedTime = 0L
     private var failedUrl: String? = null
     private var pendingPermissionRequest: PermissionRequest? = null
@@ -285,7 +288,7 @@ class MainActivity : AppCompatActivity() {
         setupBackPressed()
         checkAndClearDownloadCache()
         //splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
-        //webView.loadUrl("file:///android_asset/myTest.html")
+        webView.loadUrl("file:///android_asset/myTest.html")
 
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
@@ -604,6 +607,11 @@ class MainActivity : AppCompatActivity() {
                         "javascript:if(window.JSBridge && window.JSBridge.onDeepLink){window.JSBridge.onDeepLink('$deepLinkUrl');}"
                     webView.evaluateJavascript(jsCode, null)
                     pendingDeepLink = null
+                }
+
+                pendingNotificationData?.let { data ->
+                    sendJsNative("clickNotificationBar_callback", webView, data)
+                    pendingNotificationData = null
                 }
             }
         }
@@ -1759,8 +1767,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showErrorView(url: String? = null) {
+        // 隐藏/销毁 Splash 逻辑保持不变
         if (splashView.isVisible) {
-            //sendEmptyJsNative("finishAnimationFast", splash_webview)
             splashView.animate()
                 .alpha(0f)
                 .setDuration(400)
@@ -1771,12 +1779,21 @@ class MainActivity : AppCompatActivity() {
         } else {
             destroySplashWebView()
         }
+
         if (!url.isNullOrEmpty()) {
             failedUrl = url
         }
+
         val targetUrl = failedUrl ?: ""
-        val encodedUrl = java.net.URLEncoder.encode(targetUrl, "UTF-8")
-        webView.loadUrl("file:///android_asset/net_error.html?url=$encodedUrl")
+        // 【优化】避免 encode 空字符串，并使用标准 Charsets
+        if (targetUrl.isNotEmpty()) {
+            try {
+                val encodedUrl = URLEncoder.encode(targetUrl, StandardCharsets.UTF_8.name())
+                webView.loadUrl("file:///android_asset/net_error.html?url=$encodedUrl")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     override fun onResume() {
@@ -1791,7 +1808,7 @@ class MainActivity : AppCompatActivity() {
             installApk(it)
             pendingInstallApkUri = null
         }
-        //handleNotificationClick(intent)
+        handleNotificationClick(intent)
     }
 
     override fun onPause() {
@@ -2036,12 +2053,12 @@ class MainActivity : AppCompatActivity() {
                 return
             } else {
                 Log.d(TAG, "Max retries reached, loading local asset.")
-                webView.loadUrl("file:///android_asset/myTest.html")
+               // webView.loadUrl("file:///android_asset/myTest.html")
             }
         } else {
             // 重置重试计数（如果成功获取）
             fetchRetryCount = 0
-            webView.loadUrl(h5BaseUrl)
+            //webView.loadUrl(h5BaseUrl)
         }
 
         val h5OfflineConfig = remoteConfig["h5_offline_config"].asString()
@@ -2188,44 +2205,81 @@ class MainActivity : AppCompatActivity() {
 
                 // SMS短信处理
                 if (isSms) {
+                    // 获取系统默认短信应用的包名
                     val defaultSmsPackage = Telephony.Sms.getDefaultSmsPackage(this@MainActivity)
-                    val intent = if (imageUri != null) {
-                        // 带图片的短信 (MMS)
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = "image/*"
+
+                    if (imageUri != null) {
+                        // --- 带图片的短信 (MMS) ---
+
+                        // 方案 A：使用专门的 mmsto 协议 + ACTION_SENDTO (现代短信应用兼容性最好)
+                        val mmsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mmsto:$cleanPhone") // 注意这里改成了 mmsto
                             putExtra(Intent.EXTRA_STREAM, imageUri)
+
                             if (shareText.isNotEmpty()) {
-                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                putExtra("sms_body", shareText)
+                                putExtra(Intent.EXTRA_TEXT, shareText) // 增加兼容性
                             }
-                            if (cleanPhone.isNotEmpty()) {
-                                putExtra("address", cleanPhone)
-                            }
-                            // 动态设置默认短信应用包名
+
+                            // 授权及剪贴板传递 (兼容 Android 11+)
+                            clipData = android.content.ClipData.newRawUri("MMS Image", imageUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+                            // 【核心】强制指定包名为默认短信，防止弹窗
                             if (!defaultSmsPackage.isNullOrEmpty()) {
                                 setPackage(defaultSmsPackage)
                             }
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+
+                        try {
+                            startActivity(mmsIntent)
+                        } catch (e: Exception) {
+                            // 方案 B 兜底：使用 ACTION_SEND
+                            val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "image/*"
+                                putExtra(Intent.EXTRA_STREAM, imageUri)
+                                if (cleanPhone.isNotEmpty()) {
+                                    putExtra("address", cleanPhone)
+                                }
+                                if (shareText.isNotEmpty()) {
+                                    putExtra("sms_body", shareText)
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                }
+
+                                clipData = android.content.ClipData.newRawUri("MMS Image", imageUri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+                                // 【核心修复】兜底方案也要加 setPackage，否则必定弹选择框！
+                                if (!defaultSmsPackage.isNullOrEmpty()) {
+                                    setPackage(defaultSmsPackage)
+                                }
+                            }
+
+                            try {
+                                startActivity(fallbackIntent)
+                            } catch (e2: Exception) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.sms_app_not_found),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     } else {
-                        // 纯文本短信
-                        Intent(Intent.ACTION_SENDTO).apply {
+                        // --- 纯文本短信 ---
+                        val textIntent = Intent(Intent.ACTION_SENDTO).apply {
                             data = Uri.parse("smsto:$cleanPhone")
                             if (shareText.isNotEmpty()) {
                                 putExtra("sms_body", shareText)
                             }
+                            // 纯文本也建议加上 setPackage，更加严谨
                             if (!defaultSmsPackage.isNullOrEmpty()) {
                                 setPackage(defaultSmsPackage)
                             }
                         }
-                    }
-                    try {
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        // 兜底：如果设置包名失败，尝试不设包名再次启动
                         try {
-                            intent.setPackage(null)
-                            startActivity(intent)
-                        } catch (e2: Exception) {
+                            startActivity(textIntent)
+                        } catch (e: Exception) {
                             Toast.makeText(
                                 this@MainActivity,
                                 getString(R.string.sms_app_not_found),
@@ -2534,15 +2588,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleNotificationClick(intent: Intent?) {
         if (intent == null) return
+        var isNotificationClick = false
+        var title: String? = null
+        var content: String? = null
+        var msgType: String? = null
+        var msgJumpUrl: String? = ""
+        var msgData: String? = null
+        var soundType: String? = null
+
         if (intent.getBooleanExtra("from_notification", false)) {
             // 清除标志防止重复处理，直接使用传入的 intent 实例
             intent.removeExtra("from_notification")
-            val title = intent.getStringExtra("NotificationTitle")
-            val content = intent.getStringExtra("NotificationBody")
-            val msgType = intent.getStringExtra("NotificationMsgType")
-            val msgJumpUrl = intent.getStringExtra("NotificationMsgJumpUrl") ?: ""
-            val msgData = intent.getStringExtra("NotificationMsgData")
-            val soundType = intent.getStringExtra("NotificationMsgSoudType")
+            title = intent.getStringExtra("NotificationTitle")
+            content = intent.getStringExtra("NotificationBody")
+            msgType = intent.getStringExtra("NotificationMsgType")
+            msgJumpUrl = intent.getStringExtra("NotificationMsgJumpUrl") ?: ""
+            msgData = intent.getStringExtra("NotificationMsgData")
+            soundType = intent.getStringExtra("NotificationMsgSoudType")
+            isNotificationClick = true
+        } else if (intent.hasExtra("msg_type")) {
+            title = intent.getStringExtra("title")
+            content = intent.getStringExtra("body")
+            msgType = intent.getStringExtra("msg_type")
+            msgJumpUrl = intent.getStringExtra("msg_jump_url") ?: ""
+            msgData = intent.getStringExtra("msg_data")
+            soundType = intent.getStringExtra("msg_soud_type")
+            intent.removeExtra("msg_type")
+            isNotificationClick = true
+        }
+
+        if (isNotificationClick) {
             try {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", title)
@@ -2551,11 +2626,14 @@ class MainActivity : AppCompatActivity() {
                 jsonObj.put("msg_jump_url", msgJumpUrl)
                 jsonObj.put("msg_data", msgData)
                 Log.w("WebViewTest", jsonObj.toString())
+                val dataStr = jsonObj.toString()
+                var isLoadingNewPage = false
                 when (msgType) {
                     "1" -> {
                         // 确保 WebView 处于 resume 状态
                         webView.onResume()
-                        webView.loadUrl(msgJumpUrl)
+                        webView.loadUrl(msgJumpUrl ?: "")
+                        isLoadingNewPage = true
                         Handler(Looper.getMainLooper()).postDelayed({
                             runOnUiThread {
                                 if (splashView.isVisible) {
@@ -2577,7 +2655,7 @@ class MainActivity : AppCompatActivity() {
 
                     "3" -> {
                         try {
-                            val intentAction = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl))
+                            val intentAction = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl ?: ""))
                             intentAction.flags =
                                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             this@MainActivity.startActivity(
@@ -2591,7 +2669,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-                sendJsNative("clickNotificationBar_callback", webView, jsonObj.toString())
+
+                if (isLoadingNewPage || webView.progress < 100) {
+                    pendingNotificationData = dataStr
+                } else {
+                    sendJsNative("clickNotificationBar_callback", webView, dataStr)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

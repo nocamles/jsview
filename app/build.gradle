@@ -15,8 +15,8 @@ android {
         applicationId "com.gamego.ganha"
         minSdk 24
         targetSdk 36
-        versionCode 111
-        versionName "1.1.1"
+        versionCode 112
+        versionName "1.1.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -87,6 +87,7 @@ dependencies {
     implementation(libs.androidx.work.runtime)
 
     implementation(libs.firebase.inappmessaging.display)
+    implementation "com.airbnb.android:lottie:6.7.1"
     
     // VasDolly helper library
     implementation 'com.tencent.vasdolly:helper:3.0.6'
