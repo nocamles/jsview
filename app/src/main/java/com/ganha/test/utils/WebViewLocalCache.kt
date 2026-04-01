@@ -2,12 +2,14 @@ package com.ganha.test.utils
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.zip.ZipInputStream
 
 /**
  * 针对高频加载的JS、CSS、背景图、金币图标及视频进行本地拦截和缓存。
@@ -16,6 +18,9 @@ import java.security.MessageDigest
 class WebViewLocalCache(private val context: Context) {
     private val cacheDir = File(context.cacheDir, "webview_local_cache")
     private val maxCacheSize = 100 * 1024 * 1024L // 100MB
+
+    private val offlineDir = File(context.filesDir, "h5_offline")
+    private val offlinePrefs = context.getSharedPreferences("h5_offline_prefs", Context.MODE_PRIVATE)
 
     private val cacheableExtensions = listOf(
         ".js", ".css", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".ico",
@@ -27,6 +32,71 @@ class WebViewLocalCache(private val context: Context) {
             cacheDir.mkdirs()
         }
         checkLruCacheSize()
+    }
+
+    fun checkAndDownloadZip(zipUrl: String, versionCode: String, h5BaseUrl: String) {
+        val lastVersion = offlinePrefs.getString("version_code", "")
+        if (lastVersion == versionCode) {
+            offlinePrefs.edit().putString("h5_base_url", h5BaseUrl).apply()
+            return
+        }
+
+        Thread {
+            try {
+                Log.d("WebViewLocalCache", "Starting to download H5 offline ZIP: $zipUrl")
+                val url = URL(zipUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 30000
+                connection.readTimeout = 30000
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val zipFile = File(context.cacheDir, "h5_offline.zip")
+                    connection.inputStream.use { input ->
+                        FileOutputStream(zipFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    if (unzip(zipFile, offlineDir)) {
+                        offlinePrefs.edit()
+                            .putString("version_code", versionCode)
+                            .putString("h5_base_url", h5BaseUrl)
+                            .apply()
+                        Log.d("WebViewLocalCache", "H5 offline ZIP updated to version: $versionCode")
+                        zipFile.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("WebViewLocalCache", "Failed to update H5 offline ZIP", e)
+            }
+        }.start()
+    }
+
+    private fun unzip(zipFile: File, targetDir: File): Boolean {
+        try {
+            if (targetDir.exists()) {
+                targetDir.deleteRecursively()
+            }
+            targetDir.mkdirs()
+            ZipInputStream(FileInputStream(zipFile)).use { zipIn ->
+                var entry = zipIn.nextEntry
+                while (entry != null) {
+                    val file = File(targetDir, entry.name)
+                    if (entry.isDirectory) {
+                        file.mkdirs()
+                    } else {
+                        file.parentFile?.mkdirs()
+                        FileOutputStream(file).use { out ->
+                            zipIn.copyTo(out)
+                        }
+                    }
+                    zipIn.closeEntry()
+                    entry = zipIn.nextEntry
+                }
+            }
+            return true
+        } catch (e: Exception) {
+            Log.e("WebViewLocalCache", "Unzip failed", e)
+            return false
+        }
     }
 
     private fun getExtension(url: String): String {
@@ -54,6 +124,28 @@ class WebViewLocalCache(private val context: Context) {
 
     fun interceptRequest(request: WebResourceRequest): WebResourceResponse? {
         val url = request.url.toString()
+
+        // 优先检查离线ZIP包
+        val h5BaseUrl = offlinePrefs.getString("h5_base_url", "")
+        if (h5BaseUrl?.isNotEmpty() == true && url.startsWith(h5BaseUrl)) {
+            val relativePath = url.substring(h5BaseUrl.length).substringBefore("?")
+            val offlineFile = File(offlineDir, relativePath)
+            if (offlineFile.exists() && offlineFile.isFile) {
+                try {
+                    val mimeType = getMimeType(url)
+                    val inputStream = FileInputStream(offlineFile)
+                    val response = WebResourceResponse(mimeType, "UTF-8", inputStream)
+                    val responseHeaders = mutableMapOf<String, String>()
+                    responseHeaders["Access-Control-Allow-Origin"] = "*"
+                    response.responseHeaders = responseHeaders
+                    Log.d("WebViewLocalCache", "Serving from offline ZIP: $url")
+                    return response
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
         if (!shouldIntercept(url)) return null
 
         val method = request.method

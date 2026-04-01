@@ -30,7 +30,7 @@
     <string name="go_to_authorize">去授权</string>
     <string name="permission_tips">权限提示</string>
     <string name="reauthorize">重新授权</string>
-    <string name="go_to_settings">去设置</string>
+    <string name="go_to_settings">去设置开启权限</string>
     <string name="downloading_file">正在下载文件...</string>
     <string name="copy_success">已复制到剪贴板</string>
     <string name="share_to">分享至</string>

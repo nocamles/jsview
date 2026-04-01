@@ -157,6 +157,10 @@
             <input type="text" id="shareContent" value="这是分享的文本内容" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
         </div>
         <div style="margin: 10px 0;">
+            <label>目标号码 (phone/number):</label>
+            <input type="text" id="sharePhone" value="" placeholder="仅 WhatsApp/SMS 有效，例: 5511999999999" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
+        </div>
+        <div style="margin: 10px 0;">
             <label>图片URL (image_url):</label>
             <input type="text" id="shareImageUrl" value="" placeholder="输入图片网络地址" style="width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box;">
         </div>
@@ -187,32 +191,6 @@
         <h3>11. 前后台状态监听 (onAppLifecycle)</h3>
         <p>将 App 切换至后台再切回前台，观察下方状态变化：</p>
         <pre id="lifecycleResult" style="white-space: pre-wrap; word-wrap: break-word;">当前状态: 初始化</pre>
-    </div>
-
-    <div class="section">
-        <h3>12. 版本更新通知测试</h3>
-        <p>配置更新参数并通知原生端：</p>
-        <div style="margin: 10px 0;">
-            <label>下载链接:</label>
-            <input type="text" id="updateUrl" value="https://github.com/nocamles/jsview/releases/download/1.1/jsview-1.1.apk" style="width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc;">
-        </div>
-        <div style="display: flex; justify-content: space-between; margin: 10px 0; gap: 10px;">
-            <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-size: 14px;">强制更新</label>
-                <div class="capsule-group">
-                    <button type="button" id="forceUpdateTrue" onclick="setForceUpdate(true)">是</button>
-                    <button type="button" id="forceUpdateFalse" class="active" onclick="setForceUpdate(false)">否</button>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <label style="display: block; margin-bottom: 5px; font-size: 14px;">后台更新</label>
-                <div class="capsule-group">
-                    <button type="button" id="bgUpdateTrue" class="active" onclick="setBgUpdate(true)">是</button>
-                    <button type="button" id="bgUpdateFalse" onclick="setBgUpdate(false)">否</button>
-                </div>
-            </div>
-        </div>
-        <button class="success" onclick="triggerAppUpdate()">通知原生版本更新</button>
     </div>
 
     <div class="section">
@@ -295,6 +273,12 @@
         <button onclick="testStorageSave()">保存数据 (Save)</button>
         <button onclick="testStorageGet()">读取数据 (Get)</button>
         <pre id="storageResult" style="display:none; white-space: pre-wrap; word-wrap: break-word;"></pre>
+    </div>
+
+    <div class="section">
+        <h3>21. 跳转到H5主页面</h3>
+        <p>跳转到Firebase获取到的H5页面：</p>
+        <button class="success" onclick="callNative('h5Baseurl')">跳转到H5</button>
     </div>
 
     <script>
@@ -643,6 +627,10 @@
             }
             resultElement.style.display = 'block';
         }
+
+        window.addEventListener('load', function() {
+            callNative('removeSplashScreen');
+        });
 
     </script>
 </body>

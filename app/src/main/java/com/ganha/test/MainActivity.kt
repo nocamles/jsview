@@ -23,6 +23,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -30,8 +31,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.MediaStore
+import android.provider.Telephony
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -55,6 +58,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -72,6 +76,7 @@ import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
 import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBean.Companion.js_getPushToken
 import com.ganha.test.bean.JsBean.Companion.js_goBack
+import com.ganha.test.bean.JsBean.Companion.js_gotoH5BaseUrl
 import com.ganha.test.bean.JsBean.Companion.js_installedSocialApps
 import com.ganha.test.bean.JsBean.Companion.js_loadErrorUrl
 import com.ganha.test.bean.JsBean.Companion.js_onAppLifecycle
@@ -130,6 +135,9 @@ import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
+    private var isPageLoadedSuccessfully = false
+    private var apkOfflineConfigJson: String? = null
+
     private var mainUrlText: String = ""
     private var mainUrlGanha: String = ""
 
@@ -166,7 +174,7 @@ class MainActivity : AppCompatActivity() {
                 contentResolver.openFileDescriptor(uri, "r")?.use {
                     fileSize = it.statSize
                 }
-                if (fileSize <= 500 * 1024) {
+                if (fileSize <= 400 * 1024) {
                     return@withContext uri
                 }
 
@@ -180,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                 var outputStream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
 
-                while (outputStream.toByteArray().size > 500 * 1024 && quality > 10) {
+                while (outputStream.toByteArray().size > 400 * 1024 && quality > 10) {
                     quality -= 10
                     outputStream.reset()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
@@ -201,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private var splash_webview: WebView? = null
+    //private var splash_webview: WebView? = null
     private lateinit var splashView: View
 
     private var pendingDeepLink: String? = null
@@ -217,15 +225,19 @@ class MainActivity : AppCompatActivity() {
     private var isDownloading = false
     private var customDialog: Dialog? = null
     private var updateDownloadJob: kotlinx.coroutines.Job? = null
+    private var h5BaseUrl : String = ""
+
+    private var hasRequestedNotificationPermission = false
 
     private var isAppInForeground = false
     private var pendingInstallApkUri: Uri? = null
     private val installPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val uri = pendingInstallApkUri
+            pendingInstallApkUri = null
             if (packageManager.canRequestPackageInstalls()) {
-                pendingInstallApkUri?.let {
+                uri?.let {
                     installApk(it)
-                    pendingInstallApkUri = null
                 }
             } else {
                 Toast.makeText(this, getString(R.string.permission_install_denied), Toast.LENGTH_SHORT).show()
@@ -249,15 +261,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         window.statusBarColor = Color.TRANSPARENT
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
 
         webView = findViewById(R.id.webView)
-        splash_webview = findViewById(R.id.webview_Splash)
+        //splash_webview = findViewById(R.id.webview_Splash)
         splashView = findViewById(R.id.splashView)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             statusBarHeight = systemBars.top
+            navBarHeight = systemBars.bottom
             v.setPadding(0, 0, 0, systemBars.bottom)
             insets
         }
@@ -266,7 +279,7 @@ class MainActivity : AppCompatActivity() {
         initWebView()
         setupBackPressed()
         checkAndClearDownloadCache()
-        splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
+        //splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
         webView.loadUrl("file:///android_asset/myTest.html")
 
         firebaseAnalytics = Firebase.analytics
@@ -274,35 +287,16 @@ class MainActivity : AppCompatActivity() {
         initFbConfig()
 
         handleDeepLink(intent)
-
-        try {
-            val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
-            permList.add(PermissionLists.getPostNotificationsPermission())
-            if (permList.isNotEmpty()) {
-                PermissionHelper.checkPermission(
-                    this@MainActivity,
-                    permList,
-                    getString(R.string.need_get_per_notif),
-                    getString(R.string.go_to_settings),
-                    object : RequestCallback {
-                        override fun onGranted() {
-
-                        }
-                        override fun onDenied() {
-
-                        }
-                    }
-                )
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        handleNotificationClick(intent)
+        countDownTimer.start()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        Log.d("aike","onNewIntent")
         setIntent(intent)
         handleDeepLink(intent)
+        handleNotificationClick(intent)
     }
 
     private fun handleDeepLink(intent: Intent?) {
@@ -368,14 +362,15 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun initWebView() {
-        splash_webview?.setBackgroundColor(Color.TRANSPARENT)
+        /**splash_webview?.setBackgroundColor(Color.TRANSPARENT)
         splash_webview?.settings?.javaScriptEnabled = true
+        splash_webview?.settings?.textZoom = 100
         splash_webview?.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
 
             }
-        }
+        }**/
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -561,15 +556,35 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 android.util.Log.e("WebViewTest", "主页面已加载完毕进入 onPageFinished: $url")
 
-                if (splashView.isVisible) {
-                    sendEmptyJsNative("finishAnimationFast", splash_webview)
-
-                    splashView.postDelayed({
-                        if (splashView.isVisible) {
-                            android.util.Log.e("WebViewTest", "JS未按时响应，触发兜底强制移除开屏页")
-                            sendEmptyJsNative("finishAnimationFast", splash_webview)
+                if (url != null && !url.contains("net_error.html") && url != "about:blank") {
+                    isPageLoadedSuccessfully = true
+                    checkAndTriggerUpdate(apkOfflineConfigJson)
+                    
+                    if (!hasRequestedNotificationPermission) {
+                        hasRequestedNotificationPermission = true
+                        try {
+                            val permList = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                            permList.add(PermissionLists.getPostNotificationsPermission())
+                            if (permList.isNotEmpty()) {
+                                PermissionHelper.checkPermission(
+                                    this@MainActivity,
+                                    permList,
+                                    getString(R.string.need_get_per_notif),
+                                    getString(R.string.go_to_settings),
+                                    object : RequestCallback {
+                                        override fun onGranted() {}
+                                        override fun onDenied() {}
+                                    }
+                                )
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
-                    }, 1000)
+                    }
+                }
+
+                if (splashView.isVisible) {
+                    //sendEmptyJsNative("finishAnimationFast", splash_webview)
                 }
 
                 pendingDeepLink?.let { deepLinkUrl ->
@@ -655,7 +670,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(JsBean(viewModel), "App")
-        splash_webview?.addJavascriptInterface(JsBean(viewModel), "App")
+        //splash_webview?.addJavascriptInterface(JsBean(viewModel), "App")
     }
 
     private fun setupBackPressed() {
@@ -861,6 +876,11 @@ class MainActivity : AppCompatActivity() {
                                             }.show()
                                         }
                                     }
+                                } else {
+                                    val downloadDir = File(cacheDir, "downloadapk")
+                                    if (downloadDir.exists()) {
+                                        downloadDir.deleteRecursively()
+                                    }
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -901,6 +921,7 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         js_removeSplashScreen -> {
+                            countDownTimer.cancel()
                             runOnUiThread {
                                 if (splashView.visibility == View.VISIBLE) {
                                     splashView.animate()
@@ -967,7 +988,7 @@ class MainActivity : AppCompatActivity() {
                         js_vibrate -> {
                             try {
                                 val vibrateBean = Gson().fromJson(jsMessage.paramObj, VibrateBean::class.java) ?: VibrateBean()
-                                val duration = vibrateBean.duration
+                                val duration = vibrateBean.duration ?: 50L
 
                                 if (duration <= 0L) {
                                     return@collect
@@ -990,7 +1011,7 @@ class MainActivity : AppCompatActivity() {
                                             VibrationEffect.DEFAULT_AMPLITUDE
                                         }
 
-                                        vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude))
+                                        vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude?:100))
                                     } else {
                                         // Android 8.0 以下版本
                                         @Suppress("DEPRECATION")
@@ -1108,7 +1129,13 @@ class MainActivity : AppCompatActivity() {
                                 var versionCode = 0
                                 var versionName = ""
                                 var packName = packageName
-                                
+                                var gaid = ""
+                                var androidId = ""
+                                var device_brand = ""
+                                var device_model = ""
+                                var os_version = ""
+                                var network_type = ""
+
                                 try {
                                     isEmulator = DeviceInfoHelper.isEmulator()
                                     isVpnOrProxy = DeviceInfoHelper.isVpnOrProxy(this@MainActivity)
@@ -1119,6 +1146,13 @@ class MainActivity : AppCompatActivity() {
                                     simOperator = DeviceInfoHelper.getSimOperator(this@MainActivity)
                                     deviceId = DeviceIdUtil.getUniqueDeviceId(this@MainActivity)
                                     simCountry = DeviceInfoHelper.getSimCountry(this@MainActivity)
+
+                                    gaid = DeviceIdUtil.getGaid(this@MainActivity) ?: ""
+                                    androidId = DeviceIdUtil.getAndroidId(this@MainActivity) ?: ""
+                                    device_brand = DeviceInfoHelper.getDeviceBrand()
+                                    device_model = DeviceInfoHelper.getDeviceModel()
+                                    os_version = DeviceInfoHelper.getOsVersion()
+                                    network_type = DeviceInfoHelper.getNetworkType(this@MainActivity)
 
                                     val packageInfo = packageManager.getPackageInfo(packageName, 0)
                                     versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -1144,7 +1178,14 @@ class MainActivity : AppCompatActivity() {
                                     versionCode = versionCode,
                                     versionName = versionName,
                                     packageName = packName,
-                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity)
+                                    statusBarHeight = statusBarHeight.toH5Value(this@MainActivity),
+                                    navigationBarHeight = navBarHeight.toH5Value(this@MainActivity),
+                                    androidId = androidId,
+                                    gaid = gaid,
+                                    device_brand = device_brand,
+                                    device_model = device_model,
+                                    os_version = os_version,
+                                    network_type = network_type
                                 )
                                 val jsonStr = Gson().toJson(appInfo)
                                 withContext(Dispatchers.Main) {
@@ -1175,20 +1216,27 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         js_clickNotificationBar -> {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                // Create channel to show notifications.
-                                val channelId = getString(R.string.default_notification_channel_id)
-                                val channelName = "TestCCC"
-                                val notificationManager = getSystemService(NotificationManager::class.java)
-                                notificationManager?.createNotificationChannel(
-                                    NotificationChannel(
-                                        channelId,
-                                        channelName,
-                                        NotificationManager.IMPORTANCE_LOW,
-                                    ),
-                                )
-                            }
-                            sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
+                            val perms = mutableListOf<com.hjq.permissions.permission.base.IPermission>()
+                            perms.add(PermissionLists.getPostNotificationsPermission())
+                            PermissionHelper.checkPermission(
+                                this@MainActivity,
+                                perms,
+                                getString(R.string.need_get_per_notif),
+                                getString(R.string.go_to_settings),
+                                object : RequestCallback {
+                                    override fun onGranted() {
+                                        sendNotification(getString(R.string.test_notification_content), getString(R.string.test_notification_title))
+                                    }
+
+                                    override fun onDenied() {
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            getString(R.string.permission_denied),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            )
                         }
                         js_loadErrorUrl -> {
                             try {
@@ -1231,6 +1279,14 @@ class MainActivity : AppCompatActivity() {
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
+                            }
+                        }
+
+                        js_gotoH5BaseUrl -> {
+                            if(!h5BaseUrl.isNullOrEmpty())
+                                webView.loadUrl(h5BaseUrl)
+                            else{
+                                Toast.makeText(this@MainActivity,"没有获取到H5BaseUrl",Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -1573,7 +1629,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showErrorView(url: String? = null) {
-        destroySplashWebView()
+        if (splashView.isVisible) {
+            //sendEmptyJsNative("finishAnimationFast", splash_webview)
+            splashView.animate()
+                .alpha(0f)
+                .setDuration(400)
+                .withEndAction {
+                    destroySplashWebView()
+                }
+                .start()
+        } else {
+            destroySplashWebView()
+        }
         if (!url.isNullOrEmpty()) {
             failedUrl = url
         }
@@ -1586,7 +1653,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         isAppInForeground = true
         webView.onResume()
-        splash_webview?.onResume()
+        //splash_webview?.onResume()
         webView.resumeTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"foreground\"}")
         Toast.makeText(this, "已切换到前台", Toast.LENGTH_SHORT).show()
@@ -1594,7 +1661,7 @@ class MainActivity : AppCompatActivity() {
             installApk(it)
             pendingInstallApkUri = null
         }
-        handleNotificationClick(intent)
+        //handleNotificationClick(intent)
     }
 
     override fun onPause() {
@@ -1602,7 +1669,7 @@ class MainActivity : AppCompatActivity() {
         isAppInForeground = false
         // 绑定生命周期：后台锁屏时必须调用 onPause() 解决幽灵声音 Bug
         webView.onPause()
-        splash_webview?.onPause()
+        //splash_webview?.onPause()
         webView.pauseTimers()
         sendJsNative(js_onAppLifecycle, webView, "{\"status\":\"background\"}")
         Toast.makeText(this, "已切换到后台", Toast.LENGTH_SHORT).show()
@@ -1613,7 +1680,8 @@ class MainActivity : AppCompatActivity() {
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.clearHistory()
         webView.destroy()
-        splash_webview?.destroy()
+        //splash_webview?.destroy()
+        countDownTimer.cancel()
         super.onDestroy()
     }
 
@@ -1621,7 +1689,7 @@ class MainActivity : AppCompatActivity() {
      * 销毁开屏页
      */
     private fun destroySplashWebView() {
-        if (splash_webview != null) {
+        /**if (splash_webview != null) {
             splashView.visibility = View.GONE
 
             val parent = splash_webview?.parent as? ViewGroup
@@ -1635,7 +1703,7 @@ class MainActivity : AppCompatActivity() {
             splash_webview?.clearView() // 针对老版本API
             splash_webview?.removeAllViews()
             splash_webview?.loadUrl("about:blank")
-        }
+        }**/
     }
 
     private fun showSaveImageDialog(imageUrl: String) {
@@ -1828,7 +1896,89 @@ class MainActivity : AppCompatActivity() {
         mainUrlText = remoteConfig["main_url_text"].asString()
         mainUrlGanha = remoteConfig["main_url_ganha"].asString()
         Log.d(TAG,"mainUrlText:${mainUrlText}\nmainUrlGanha:${mainUrlGanha}")
+
+        val h5OfflineConfig = remoteConfig["h5_offline_config"].asString()
+        h5BaseUrl = remoteConfig["h5_base_url"].asString()
+        Log.d(TAG,"h5_offline_config:$h5OfflineConfig")
+        Log.d(TAG,"h5_base_url:$h5BaseUrl")
+
+        if (h5OfflineConfig.isNotEmpty()) {
+            try {
+                val json = JSONObject(h5OfflineConfig)
+                val zipUrl = json.optString("zip_url")
+                val versionCode = json.optString("version_code")
+                if (zipUrl.isNotEmpty() && versionCode.isNotEmpty()) {
+                    webViewLocalCache.checkAndDownloadZip(zipUrl, versionCode, h5BaseUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        apkOfflineConfigJson = remoteConfig["apk_offline_config"].asString()
+        Log.d(TAG,"apk_offline_config:${apkOfflineConfigJson}")
+
+        if (isPageLoadedSuccessfully) {
+            checkAndTriggerUpdate(apkOfflineConfigJson)
+        }
         // [END get_config_values]
+    }
+
+    private fun checkAndTriggerUpdate(configJson: String?) {
+        if (configJson.isNullOrEmpty()) return
+        try {
+            val jsonObj = JSONObject(configJson)
+            //val needUpdate = jsonObj.optBoolean("need_update", false)
+            val versionCode = jsonObj.optString("version_code", "").replace(".","").toInt()
+            Log.d("checkAndTriggerUpdate","versionCode=${versionCode}\ngetVersionCode=${DeviceIdUtil.getVersionCode(this)}")
+            if (versionCode > DeviceIdUtil.getVersionCode(this)) {
+                val appUpdateBean = AppUpdateBean(
+                    needUpdate = true,
+                    updateUrl = jsonObj.optString("apk_url", ""),
+                    versionCode = 0,
+                    versionName = jsonObj.optString("version_code", ""),
+                    apkName = "app_update_${jsonObj.optString("version_code", "")}",
+                    isBackGround = jsonObj.optBoolean("is_back_ground", false),
+                    isForceUpdate = jsonObj.optBoolean("is_force_update", false)
+                )
+
+                if (!appUpdateBean.updateUrl.isNullOrEmpty()) {
+                    runOnUiThread {
+                        if (appUpdateBean.isBackGround) {
+                            downloadAppUpdate(appUpdateBean)
+                        } else {
+                            val content = jsonObj.optString("content", "")
+                                .replace("<p>", "").replace("</p>", "\n").trim()
+
+                            MyCustomTipsDialog(
+                                this@MainActivity,
+                                jsonObj.optString("title", getString(R.string.version_update)),
+                                content,
+                                getString(R.string.remind_later),
+                                getString(R.string.update_now),
+                                onCancelListener = null,
+                                onConfirmListener = {
+                                    downloadAppUpdate(appUpdateBean)
+                                },
+                                !appUpdateBean.isForceUpdate,
+                                Gravity.START
+                            ).apply {
+                                setCancelable(!appUpdateBean.isForceUpdate)
+                            }.show()
+                        }
+                    }
+                    // 触发后清空配置，防止重复触发（如页面刷新）
+                    apkOfflineConfigJson = null
+                }
+            } else {
+                val downloadDir = File(cacheDir, "downloadapk")
+                if (downloadDir.exists()) {
+                    downloadDir.deleteRecursively()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun handleShare(shareBean: com.ganha.test.bean.ShareBean?) {
@@ -1846,8 +1996,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             val targetApp = shareBean.targetApp ?: shareBean.platform
+            val rawPhone = shareBean.phone ?: shareBean.number ?: ""
+            // 号码清洗：只保留数字，适配巴西南美等国际区号开头格式
+            val cleanPhone = rawPhone.replace(Regex("\\D"), "")
+            
             val isSpecificApp = !targetApp.isNullOrEmpty()
             val isSms = targetApp?.lowercase() == "sms"
+            val isWhatsApp = targetApp?.lowercase() == "whatsapp"
             val isMetaApp = targetApp?.lowercase() in listOf("facebook", "messenger", "instagram", "ins")
             val isImageWithText = imageUri != null && shareText.isNotEmpty()
 
@@ -1874,29 +2029,48 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // SMS短信按照主流软件单独处理
+                // SMS短信处理
                 if (isSms) {
+                    val defaultSmsPackage = Telephony.Sms.getDefaultSmsPackage(this@MainActivity)
                     val intent = if (imageUri != null) {
+                        // 带图片的短信 (MMS)
                         Intent(Intent.ACTION_SEND).apply {
                             type = "image/*"
                             putExtra(Intent.EXTRA_STREAM, imageUri)
                             if (shareText.isNotEmpty()) {
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                             }
+                            if (cleanPhone.isNotEmpty()) {
+                                putExtra("address", cleanPhone)
+                            }
+                            // 动态设置默认短信应用包名
+                            if (!defaultSmsPackage.isNullOrEmpty()) {
+                                setPackage(defaultSmsPackage)
+                            }
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                     } else {
+                        // 纯文本短信
                         Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("smsto:")
+                            data = Uri.parse("smsto:$cleanPhone")
                             if (shareText.isNotEmpty()) {
                                 putExtra("sms_body", shareText)
+                            }
+                            if (!defaultSmsPackage.isNullOrEmpty()) {
+                                setPackage(defaultSmsPackage)
                             }
                         }
                     }
                     try {
                         startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, getString(R.string.sms_app_not_found), Toast.LENGTH_SHORT).show()
+                        // 兜底：如果设置包名失败，尝试不设包名再次启动
+                        try {
+                            intent.setPackage(null)
+                            startActivity(intent)
+                        } catch (e2: Exception) {
+                            Toast.makeText(this@MainActivity, getString(R.string.sms_app_not_found), Toast.LENGTH_SHORT).show()
+                        }
                     }
                     return@withContext
                 }
@@ -1905,7 +2079,6 @@ class MainActivity : AppCompatActivity() {
                     if (imageUri != null) {
                         type = "image/*"
                         putExtra(Intent.EXTRA_STREAM, imageUri)
-                        // Meta系如果图文混合，只能带图片过去，不要加 EXTRA_TEXT
                         if (shareText.isNotEmpty() && !isMetaApp) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
@@ -1915,6 +2088,11 @@ class MainActivity : AppCompatActivity() {
                         if (shareText.isNotEmpty()) {
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
+                    }
+                    
+                    // WhatsApp 使用 JID 实现定向图文分享
+                    if (isWhatsApp && cleanPhone.isNotEmpty()) {
+                        putExtra("jid", "$cleanPhone@s.whatsapp.net")
                     }
                 }
 
@@ -2041,12 +2219,12 @@ class MainActivity : AppCompatActivity() {
     private fun sendNotification(messageBody: String,title: String = "FCM Message") {
         val requestCode = 0
         val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         intent.putExtra("from_notification", true)
         intent.putExtra("NotificationTitle", title)
         intent.putExtra("NotificationBody", messageBody)
-        intent.putExtra("NotificationMsgType","2")
-        intent.putExtra("NotificationMsgJumpUrl","https://www.baidu.com/")
+        intent.putExtra("NotificationMsgType","3")
+        intent.putExtra("NotificationMsgJumpUrl","https://ganhagogo.com.br/2qvCHyvB5Ys")
         intent.putExtra("NotificationMsgData", "123")
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -2062,8 +2240,10 @@ class MainActivity : AppCompatActivity() {
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
-            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.aquila))
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.soud1))
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -2076,10 +2256,11 @@ class MainActivity : AppCompatActivity() {
             )
 
             channel.enableVibration(true);
-            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.aquila),
+            channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud1),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build())
 
             notificationManager.createNotificationChannel(channel)
@@ -2092,10 +2273,6 @@ class MainActivity : AppCompatActivity() {
         notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
-    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
-        super.onNewIntent(intent, caller)
-        handleNotificationClick(intent)
-    }
 
     private fun handleNotificationClick(intent: Intent){
         if (intent.getBooleanExtra("from_notification", false)) {
@@ -2106,6 +2283,7 @@ class MainActivity : AppCompatActivity() {
             val msgType = intent.getStringExtra("NotificationMsgType")
             val msgJumpUrl = intent.getStringExtra("NotificationMsgJumpUrl") ?: ""
             val msgData = intent.getStringExtra("NotificationMsgData")
+            val soundType = intent.getStringExtra("NotificationMsgSoudType")
             try {
                 val jsonObj = JSONObject()
                 jsonObj.put("NotificationTitle", title)
@@ -2138,7 +2316,7 @@ class MainActivity : AppCompatActivity() {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(msgJumpUrl))
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            this@MainActivity.startActivity(intent)
+                            this@MainActivity.startActivity(Intent.createChooser(intent, "Open with"))
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -2148,6 +2326,37 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private val countDownTimer by lazy {
+        object : CountDownTimer(8 * 1000L, 1000) {
+
+            override fun onTick(millisUntilFinished: Long) {
+                //模拟后端调用了js removeSplashScreen()，后续上线这里代码全删掉
+                if(millisUntilFinished / 1000 == 3L){
+                    cancel()
+                    runOnUiThread {
+                        if (splashView.visibility == View.VISIBLE) {
+                            splashView.animate()
+                                .alpha(0f)
+                                .setDuration(400)
+                                .withEndAction {
+                                    destroySplashWebView()
+                                }
+                                .start()
+                        }
+                    }
+
+                }
+            }
+
+            override fun onFinish() {
+                runOnUiThread {
+                    showErrorView()
+                }
+            }
+
         }
     }
 }

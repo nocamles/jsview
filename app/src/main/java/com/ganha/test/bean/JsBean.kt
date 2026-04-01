@@ -25,6 +25,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_appUpdate = "appUpdate"
         const val js_getBaseUrlInfo = "getBaseUrlInfo"
         const val js_payload = "payload"
+        const val js_gotoH5BaseUrl = "h5Baseurl"
         const val js_storage = "storage"
 
         const val js_getPushToken = "getPushToken"
