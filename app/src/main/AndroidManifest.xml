@@ -37,16 +37,30 @@
     <queries>
         <!-- WhatsApp -->
         <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+
+        <!-- Facebook -->
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.lite" />
+
+        <!-- messgener -->
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.facebook.mlite" />
+
+        <!-- Instagram -->
+        <package android:name="com.instagram.android" />
+
         <!-- TikTok -->
         <package android:name="com.zhiliaoapp.musically" />
         <package android:name="com.ss.android.ugc.trill" />
-        <!-- Facebook -->
-        <package android:name="com.facebook.katana" />
+
         <!-- Kwai -->
         <package android:name="com.kwai.video" />
         <package android:name="com.smile.gifmaker" />
-        <!-- Instagram -->
-        <package android:name="com.instagram.android" />
+
+        <!-- Telegram -->
+        <package android:name="org.telegram.messenger" />
+        <package android:name="org.thunderdog.challegram" />
     </queries>
 
     <application
