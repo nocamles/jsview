@@ -22,6 +22,69 @@ import kotlin.random.Random
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG,"MyFirebaseMessagingService onCreate")
+
+        // 仅在Android 8.0 (API 26) 及更高版本上需要通知渠道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val importance = NotificationManager.IMPORTANCE_HIGH // 通知重要性级别
+            val channel = NotificationChannel("default_notification_channel_id1"
+                , "def_notification_name1", importance)
+            channel.enableVibration(true)
+            channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
+            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud1),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build())
+
+            val channel2 = NotificationChannel("default_notification_channel_id2"
+                , "def_notification_name2", importance)
+            channel2.enableVibration(true)
+            channel2.vibrationPattern = longArrayOf(0, 500, 200, 500)
+            channel2.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud2),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build())
+
+            val channel3 = NotificationChannel("default_notification_channel_id3"
+                , "def_notification_name3", importance)
+            channel3.enableVibration(true)
+            channel3.vibrationPattern = longArrayOf(0, 500, 200, 500)
+            channel3.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud_coins),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build())
+
+            val channel4 = NotificationChannel("default_notification_channel_id4"
+                , "def_notification_name4", importance)
+            channel4.enableVibration(true)
+            channel4.vibrationPattern = longArrayOf(0, 500, 200, 500)
+            channel4.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud_samba),
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build())
+
+
+            // 将渠道注册到系统
+            val notificationManager =
+                getSystemService(NotificationManager::class.java)
+
+            if (notificationManager != null) {
+                val channelList = mutableListOf<NotificationChannel>()
+                channelList.add(channel)
+                channelList.add(channel2)
+                channelList.add(channel3)
+                channelList.add(channel4)
+                notificationManager.createNotificationChannels(channelList)
+            }
+        }
+    }
+
     /**
      * Called when message is received.
      *
@@ -151,14 +214,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             "4" -> soudRes = R.raw.soud_samba
         }
 
-        val channelId = getString(R.string.default_notification_channel_id)
+        val timestamp2 = System.currentTimeMillis()
+        val randomNumber2: Int = Random.nextInt(99999) // 生成一个0到99999之间的随机数
+        val notificationId2 = (timestamp2 xor randomNumber2.toLong()).toInt() // 使用XOR操作符混合时间戳和随机数
+
+        val channelId = getString(R.string.default_notification_channel_id) + notificationId2
         //val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(data["title"] ?: "")
             .setContentText(data["body"] ?: "")
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + soudRes))
             .setContentIntent(pendingIntent)

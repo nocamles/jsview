@@ -2543,17 +2543,29 @@ class MainActivity : AppCompatActivity() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val channelId = getString(R.string.default_notification_channel_id)
+        var soudRes = R.raw.soud1
+        when(Random.nextInt(1, 5)){
+            1 -> soudRes = R.raw.soud1
+            2 -> soudRes = R.raw.soud2
+            3 -> soudRes = R.raw.soud_coins
+            4 -> soudRes = R.raw.soud_samba
+        }
+
+        val timestamp2 = System.currentTimeMillis()
+        val randomNumber2: Int = Random.nextInt(99999) // 生成一个0到99999之间的随机数
+        val notificationId2 = (timestamp2 xor randomNumber2.toLong()).toInt() // 使用XOR操作符混合时间戳和随机数
+
+        val channelId = getString(R.string.default_notification_channel_id)+notificationId2
         //val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)
-            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + R.raw.soud1))
+            .setSound(Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + getPackageName() + "/" + soudRes))
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
@@ -2568,7 +2580,7 @@ class MainActivity : AppCompatActivity() {
             channel.enableVibration(true);
             channel.vibrationPattern = longArrayOf(0, 500, 200, 500)
             channel.setSound(
-                Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.soud1),
+                Uri.parse("android.resource://" + getPackageName() + "/" + soudRes),
                 AudioAttributes.Builder()
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
