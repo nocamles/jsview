@@ -73,6 +73,7 @@ import com.ganha.test.bean.JsBean.Companion.js_clickNotificationBar
 import com.ganha.test.bean.JsBean.Companion.js_copyToClipboard
 import com.ganha.test.bean.JsBean.Companion.js_deviceInfo
 import com.ganha.test.bean.JsBean.Companion.js_getBaseUrlInfo
+import com.ganha.test.bean.JsBean.Companion.js_getClipboard
 import com.ganha.test.bean.JsBean.Companion.js_getPermissionStatus
 import com.ganha.test.bean.JsBean.Companion.js_getPushToken
 import com.ganha.test.bean.JsBean.Companion.js_goBack
@@ -288,7 +289,7 @@ class MainActivity : AppCompatActivity() {
         setupBackPressed()
         checkAndClearDownloadCache()
         //splash_webview?.loadUrl("file:///android_asset/splash_screen.html")
-        webView.loadUrl("file:///android_asset/myTest.html")
+        //webView.loadUrl("file:///android_asset/myTest.html")
 
         firebaseAnalytics = Firebase.analytics
         updateDivEvent()
@@ -1407,6 +1408,17 @@ class MainActivity : AppCompatActivity() {
                                 ).show()
                             }
                         }
+
+                        js_getClipboard -> {
+                            try {
+                                val jsonObj = JSONObject()
+                                jsonObj.put("text", getClipboardContent())
+                                sendJsNative(jsMessage.callback, webView, jsonObj.toString())
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -2058,7 +2070,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             // 重置重试计数（如果成功获取）
             fetchRetryCount = 0
-            //webView.loadUrl(h5BaseUrl)
+            webView.loadUrl(h5BaseUrl)
         }
 
         val h5OfflineConfig = remoteConfig["h5_offline_config"].asString()
@@ -2698,21 +2710,21 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTick(millisUntilFinished: Long) {
                 //模拟后端调用了js removeSplashScreen()，后续上线这里代码全删掉
-                if (millisUntilFinished / 1000 == 3L) {
-                    cancel()
-                    runOnUiThread {
-                        if (splashView.visibility == View.VISIBLE) {
-                            splashView.animate()
-                                .alpha(0f)
-                                .setDuration(400)
-                                .withEndAction {
-                                    destroySplashWebView()
-                                }
-                                .start()
-                        }
-                    }
-
-                }
+//                if (millisUntilFinished / 1000 == 3L) {
+//                    cancel()
+//                    runOnUiThread {
+//                        if (splashView.visibility == View.VISIBLE) {
+//                            splashView.animate()
+//                                .alpha(0f)
+//                                .setDuration(400)
+//                                .withEndAction {
+//                                    destroySplashWebView()
+//                                }
+//                                .start()
+//                        }
+//                    }
+//
+//                }
             }
 
             override fun onFinish() {
@@ -2722,5 +2734,21 @@ class MainActivity : AppCompatActivity() {
             }
 
         }
+    }
+
+    /**
+     * 获取粘贴板数据
+     */
+    fun getClipboardContent(): String {
+        var clipboardContent = ""
+        val clipboardManager =
+            getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        if (clipboardManager.hasPrimaryClip()) {
+            val clipData = clipboardManager.primaryClip
+            if (clipData != null && clipData.itemCount > 0) {
+                clipboardContent = clipData.getItemAt(0).text?.toString() ?: ""
+            }
+        }
+        return clipboardContent
     }
 }

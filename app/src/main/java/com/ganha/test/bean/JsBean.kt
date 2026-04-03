@@ -33,6 +33,8 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_clickNotificationBar = "clickNotificationBar"
         const val js_loadErrorUrl = "loadErrorUrl"
 
+        const val js_getClipboard = "js_getClipboard"
+
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
             if (jsName.isNullOrEmpty()) return
             // 使用 org.json.JSONObject.quote() 自动转义双引号和特殊字符，生成安全的带双引号的 JSON 字符串
