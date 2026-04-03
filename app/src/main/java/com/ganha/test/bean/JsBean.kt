@@ -33,7 +33,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_clickNotificationBar = "clickNotificationBar"
         const val js_loadErrorUrl = "loadErrorUrl"
 
-        const val js_getClipboard = "getClipboard"
+        const val js_getClipboard = "getClipboard" //打开APP首次获取粘贴板
 
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
             if (jsName.isNullOrEmpty()) return

@@ -264,6 +264,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Handler(mainLooper).postDelayed({
+            getClipboardContent = getClipboardContent()
+            Log.d("aike","getClipboardContent1:${getClipboardContent}")
+        },300)
         webViewLocalCache = com.ganha.test.utils.WebViewLocalCache(this)
 
         enableEdgeToEdge()
@@ -1412,7 +1416,7 @@ class MainActivity : AppCompatActivity() {
                         js_getClipboard -> {
                             try {
                                 val jsonObj = JSONObject()
-                                jsonObj.put("text", getClipboardContent())
+                                jsonObj.put("text", getClipboardContent)
                                 sendJsNative(jsMessage.callback, webView, jsonObj.toString())
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -2070,6 +2074,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             // 重置重试计数（如果成功获取）
             fetchRetryCount = 0
+            Log.d("aike","load h5BaseUrl")
             webView.loadUrl(h5BaseUrl)
         }
 
@@ -2750,5 +2755,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return clipboardContent
+    }
+
+    private var getClipboardContent= ""
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if(hasFocus){
+            getClipboardContent = getClipboardContent()
+            Log.d("aike","getClipboardContent2:${getClipboardContent}")
+
+        }
     }
 }
