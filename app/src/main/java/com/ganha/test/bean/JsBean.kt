@@ -33,7 +33,7 @@ class JsBean(val viewModel: MainViewModel) {
         const val js_clickNotificationBar = "clickNotificationBar"
         const val js_loadErrorUrl = "loadErrorUrl"
 
-        const val js_getClipboard = "js_getClipboard"
+        const val js_getClipboard = "getClipboard"
 
         fun sendJsNative(jsName: String?, webView: WebView?, jsonParams: String?) {
             if (jsName.isNullOrEmpty()) return
